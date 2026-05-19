@@ -1,0 +1,42 @@
+networks:
+  proxy:
+    name: proxy
+    driver: bridge
+  db:
+    name: db
+    driver: bridge
+
+services:
+  traefik:
+    image: traefik:v3
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/acme.json:/acme.json
+    environment:
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - ACME_EMAIL=${ACME_EMAIL}
+    networks:
+      - proxy
+
+  mariadb:
+    image: mariadb:12.2.2-noble
+    container_name: mariadb
+    restart: unless-stopped
+    volumes:
+      - ./mariadb/data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    networks:
+      - db
+    healthcheck:
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

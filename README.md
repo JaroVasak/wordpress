@@ -1,0 +1,102 @@
+# WordPress + Traefik Docker Setup
+
+Multi-site WordPress stack with Traefik v3 as reverse proxy, Cloudflare DNS challenge for SSL, and MariaDB as a shared database.
+
+**For local testing on Docker Desktop**, see [LOCAL_TESTING.md](LOCAL_TESTING.md) instead.
+
+## Structure
+
+```
+wordpress/
+  shared/                     # Traefik + MariaDB (shared infrastructure)
+  sites/
+    example-com/            # Template — copy this for each new site
+```
+
+## Prerequisites
+
+- Docker + Docker Compose
+- A Cloudflare account managing your domain(s)
+- Domain(s) with DNS pointing to your server
+
+---
+
+## Credentials setup
+
+### ACME_EMAIL
+
+Any email address you own. Let's Encrypt uses it only to notify you if a certificate is about to expire. 
+
+### CF_API_TOKEN
+
+Traefik uses this to answer the ACME DNS-01 challenge — it briefly creates a TXT record to prove domain ownership, then removes it. The token needs only DNS edit access.
+
+**Steps to create it:**
+
+1. Log in to **dash.cloudflare.com**
+2. Top-right avatar → **My Profile** → **API Tokens**
+3. Click **Create Token**
+4. Use the **Edit zone DNS** template
+5. Under **Zone Resources**, set to `Include` → `All zones`
+   - This lets one token cover every domain you add in future
+6. Leave **TTL** empty (no expiry) — Traefik renews certs every ~60 days and needs a valid token at all times
+7. Click **Continue to summary** → **Create Token**
+8. **Copy the token immediately** — Cloudflare shows it only once
+
+**Verify the token works:**
+
+```bash
+curl "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+# expected: "status":"active"
+```
+
+**Token security notes:**
+- Scope is limited to DNS edit only — a leaked token cannot access billing, firewall, or account settings
+- Store it in a password manager; update `shared/.env` and restart Traefik if you ever rotate it
+- Keep `shared/.env` out of git (already covered by `.gitignore`)
+- Set strict permissions on the server: `chmod 600 shared/.env`
+
+---
+
+## 1. Base stack setup
+
+```bash
+./bootstrap.sh
+```
+
+The script will prompt for your credentials, validate the Cloudflare token, create `shared/.env` and `traefik/acme.json` with correct permissions, then start Traefik and MariaDB.
+
+**shared/.env variables:**
+
+| Variable              | Description                                        |
+|-----------------------|----------------------------------------------------|
+| `CF_API_TOKEN`        | Cloudflare API token (DNS edit, all zones)         |
+| `ACME_EMAIL`          | Email for Let's Encrypt expiry notifications       |
+| `MYSQL_ROOT_PASSWORD` | MariaDB root password (set once, keep it safe)     |
+
+---
+
+## 2. Adding a new site
+
+```bash
+./new-site.sh
+```
+
+The script will prompt for the site slug, domain, and database credentials, copy the `sites/example-com` template, create the database and user in MariaDB, then start the site stack.
+
+---
+
+## Networks
+
+| Network    | Purpose                                      |
+|------------|----------------------------------------------|
+| `proxy`    | Traefik ↔ nginx (public-facing)              |
+| `db`       | MariaDB ↔ WordPress FPM (database access)    |
+| `internal` | nginx ↔ WordPress FPM within a site (no external access) |
+
+---
+
+## Git safety
+
+`.env` files and `acme.json` are gitignored. Commit only `.env.example` files with placeholder values.
