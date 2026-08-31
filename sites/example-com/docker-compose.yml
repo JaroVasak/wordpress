@@ -1,3 +1,4 @@
+---
 networks:
   proxy:
     external: true
@@ -12,7 +13,7 @@ volumes:
 services:
   nginx:
     image: nginx:alpine
-    container_name: ${SITE_NAME}-nginx
+    container_name: ${SITE_NAME:?required}-nginx
     restart: unless-stopped
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
@@ -26,14 +27,14 @@ services:
       - internal
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.${SITE_NAME}.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.${SITE_NAME}.entrypoints=websecure"
-      - "traefik.http.routers.${SITE_NAME}.tls.certresolver=cloudflare"
+      - "traefik.http.routers.${SITE_NAME:?required}.rule=Host(`${DOMAIN:?required}`)"
+      - "traefik.http.routers.${SITE_NAME:?required}.entrypoints=websecure"
+      - "traefik.http.routers.${SITE_NAME:?required}.tls.certresolver=cloudflare"
       - "traefik.docker.network=proxy"
 
   wordpress:
     image: wordpress:php8.5-fpm
-    container_name: ${SITE_NAME}-fpm
+    container_name: ${SITE_NAME:?required}-fpm
     restart: unless-stopped
     volumes:
       - wordpress_files:/var/www/html
@@ -41,18 +42,18 @@ services:
       - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     environment:
       - WORDPRESS_DB_HOST=mariadb
-      - WORDPRESS_DB_NAME=${DB_NAME}
-      - WORDPRESS_DB_USER=${DB_USER}
-      - WORDPRESS_DB_PASSWORD=${DB_PASSWORD}
-      - WORDPRESS_TABLE_PREFIX=${WORDPRESS_TABLE_PREFIX}
-      - WORDPRESS_AUTH_KEY=${WORDPRESS_AUTH_KEY}
-      - WORDPRESS_SECURE_AUTH_KEY=${WORDPRESS_SECURE_AUTH_KEY}
-      - WORDPRESS_LOGGED_IN_KEY=${WORDPRESS_LOGGED_IN_KEY}
-      - WORDPRESS_NONCE_KEY=${WORDPRESS_NONCE_KEY}
-      - WORDPRESS_AUTH_SALT=${WORDPRESS_AUTH_SALT}
-      - WORDPRESS_SECURE_AUTH_SALT=${WORDPRESS_SECURE_AUTH_SALT}
-      - WORDPRESS_LOGGED_IN_SALT=${WORDPRESS_LOGGED_IN_SALT}
-      - WORDPRESS_NONCE_SALT=${WORDPRESS_NONCE_SALT}
+      - WORDPRESS_DB_NAME=${DB_NAME:?required}
+      - WORDPRESS_DB_USER=${DB_USER:?required}
+      - WORDPRESS_DB_PASSWORD=${DB_PASSWORD:?required}
+      - WORDPRESS_TABLE_PREFIX=${WORDPRESS_TABLE_PREFIX:?required}
+      - WORDPRESS_AUTH_KEY=${WORDPRESS_AUTH_KEY:?required}
+      - WORDPRESS_SECURE_AUTH_KEY=${WORDPRESS_SECURE_AUTH_KEY:?required}
+      - WORDPRESS_LOGGED_IN_KEY=${WORDPRESS_LOGGED_IN_KEY:?required}
+      - WORDPRESS_NONCE_KEY=${WORDPRESS_NONCE_KEY:?required}
+      - WORDPRESS_AUTH_SALT=${WORDPRESS_AUTH_SALT:?required}
+      - WORDPRESS_SECURE_AUTH_SALT=${WORDPRESS_SECURE_AUTH_SALT:?required}
+      - WORDPRESS_LOGGED_IN_SALT=${WORDPRESS_LOGGED_IN_SALT:?required}
+      - WORDPRESS_NONCE_SALT=${WORDPRESS_NONCE_SALT:?required}
     networks:
       - db
       - internal
