@@ -46,11 +46,16 @@ Persistent data is stored in these locations:
 
 ### ACME_EMAIL
 
-Any email address you own. Let's Encrypt uses it only to notify you if a certificate is about to expire. 
+Any email address you own. Let's Encrypt uses it only to notify you if a certificate is about to expire.
 
-### CF_API_TOKEN
+### CF_DNS_API_TOKEN
 
-Traefik uses this to answer the ACME DNS-01 challenge — it briefly creates a TXT record to prove domain ownership, then removes it. The token needs only DNS edit access.
+Traefik uses this token to answer the ACME DNS-01 challenge. It creates a
+temporary TXT record to prove domain ownership and then removes it. The token
+must have these permissions:
+
+- `Zone / Zone / Read`
+- `Zone / DNS / Edit`
 
 **Steps to create it:**
 
@@ -58,11 +63,12 @@ Traefik uses this to answer the ACME DNS-01 challenge — it briefly creates a T
 2. Top-right avatar → **My Profile** → **API Tokens**
 3. Click **Create Token**
 4. Use the **Edit zone DNS** template
-5. Under **Zone Resources**, set to `Include` → `All zones`
+5. Confirm that the token has the permissions listed above
+6. Under **Zone Resources**, set to `Include` → `All zones`
    - This lets one token cover every domain you add in future
-6. Leave **TTL** empty (no expiry) — Traefik renews certs every ~60 days and needs a valid token at all times
-7. Click **Continue to summary** → **Create Token**
-8. **Copy the token immediately** — Cloudflare shows it only once
+7. Leave **TTL** empty (no expiry) — Traefik needs the token for renewals
+8. Click **Continue to summary** → **Create Token**
+9. **Copy the token immediately** — Cloudflare shows it only once
 
 **Verify the token works:**
 
@@ -72,8 +78,12 @@ curl "https://api.cloudflare.com/client/v4/user/tokens/verify" \
 # expected: "status":"active"
 ```
 
+This request confirms that the token is active. It does not confirm that the
+token has the required zone permissions.
+
 **Token security notes:**
-- Scope is limited to DNS edit only — a leaked token cannot access billing, firewall, or account settings
+
+- Scope the token to zone read and DNS edit access only
 - Store it in a password manager; update `shared/.env` and restart Traefik if you ever rotate it
 - Keep `shared/.env` out of git (already covered by `.gitignore`)
 - Set strict permissions on the server: `chmod 600 shared/.env`
@@ -86,15 +96,20 @@ curl "https://api.cloudflare.com/client/v4/user/tokens/verify" \
 ./bootstrap.sh
 ```
 
-The script will prompt for your credentials, validate the Cloudflare token, create `shared/.env` and `traefik/acme.json` with correct permissions, then start Traefik and MariaDB.
+The script prompts for credentials, confirms that the Cloudflare token is
+active, creates `shared/.env` and `traefik/acme.json` with correct permissions,
+and then starts Traefik and MariaDB.
 
 **shared/.env variables:**
 
-| Variable              | Description                                        |
-|-----------------------|----------------------------------------------------|
-| `CF_API_TOKEN`        | Cloudflare API token (DNS edit, all zones)         |
-| `ACME_EMAIL`          | Email for Let's Encrypt expiry notifications       |
-| `MYSQL_ROOT_PASSWORD` | MariaDB root password (set once, keep it safe)     |
+| Variable               | Description                                      |
+|------------------------|--------------------------------------------------|
+| `CF_DNS_API_TOKEN`     | Cloudflare token with zone read and DNS edit     |
+| `ACME_EMAIL`           | Email for Let's Encrypt notifications            |
+| `MYSQL_ROOT_PASSWORD`  | MariaDB root password                            |
+
+If `shared/.env` already uses `CF_API_TOKEN`, rename it to
+`CF_DNS_API_TOKEN` before you restart Traefik.
 
 ---
 

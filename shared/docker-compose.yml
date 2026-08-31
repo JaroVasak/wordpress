@@ -34,7 +34,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/acme.json:/acme.json
     environment:
-      - CF_API_TOKEN=${CF_API_TOKEN:?CF_API_TOKEN is required}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN:?CF_DNS_API_TOKEN is required}
     networks:
       - proxy
 

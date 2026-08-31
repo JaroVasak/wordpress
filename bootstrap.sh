@@ -14,14 +14,14 @@ if [ -f "$BASE_DIR/.env" ]; then
 fi
 
 read -rp  "ACME email (for Let's Encrypt notifications): " ACME_EMAIL
-read -rsp "Cloudflare API token: " CF_API_TOKEN; echo
+read -rsp "Cloudflare DNS API token: " CF_DNS_API_TOKEN; echo
 read -rsp "MariaDB root password: " MYSQL_ROOT_PASSWORD; echo
 
-# Validate CF token before writing anything
+# Verify that the Cloudflare token is active before writing anything
 echo ""
 echo "Verifying Cloudflare token..."
 CF_VERIFY=$(curl -sf "https://api.cloudflare.com/client/v4/user/tokens/verify" \
-  -H "Authorization: Bearer $CF_API_TOKEN" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
+  -H "Authorization: Bearer $CF_DNS_API_TOKEN" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
 
 if [ "$CF_VERIFY" != "active" ]; then
   echo "Error: Cloudflare token is invalid or inactive. Aborting."
@@ -31,7 +31,7 @@ echo "Token OK."
 echo ""
 
 cat > "$BASE_DIR/.env" <<EOF
-CF_API_TOKEN=$CF_API_TOKEN
+CF_DNS_API_TOKEN=$CF_DNS_API_TOKEN
 MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
 ACME_EMAIL=$ACME_EMAIL
 EOF
