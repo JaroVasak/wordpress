@@ -2,12 +2,13 @@
 
 Multi-site WordPress stack with Traefik v3 as reverse proxy, Cloudflare DNS challenge for SSL, and MariaDB as a shared database.
 
-**For local testing on Docker Desktop**, see [LOCAL_TESTING.md](LOCAL_TESTING.md) instead.
+**For isolated local testing**, see [local/README.md](local/README.md). The local stack does not use the production Traefik or Cloudflare configuration.
 
 ## Structure
 
 ```
 wordpress/
+  local/                      # Isolated local-only stack
   shared/                     # Traefik + MariaDB (shared infrastructure)
   sites/
     example-com/            # Template — copy this for each new site

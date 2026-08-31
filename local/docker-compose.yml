@@ -1,0 +1,74 @@
+---
+networks:
+  frontend:
+    driver: bridge
+  database:
+    driver: bridge
+    internal: true
+
+volumes:
+  mariadb_data:
+  wordpress_files:
+  wordpress_content:
+
+services:
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "${LOCAL_PORT:-8080}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - wordpress_files:/var/www/html:ro
+      - wordpress_content:/var/www/html/wp-content:ro
+    depends_on:
+      wordpress:
+        condition: service_healthy
+    networks:
+      - frontend
+
+  wordpress:
+    image: wordpress:php8.5-fpm
+    restart: unless-stopped
+    volumes:
+      - wordpress_files:/var/www/html
+      - wordpress_content:/var/www/html/wp-content
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_TABLE_PREFIX: wp_local_
+      WORDPRESS_DEBUG: "1"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - frontend
+      - database
+    healthcheck:
+      test: ["CMD", "php-fpm", "-t"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  mariadb:
+    image: mariadb:12.2.2-noble
+    restart: unless-stopped
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

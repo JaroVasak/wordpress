@@ -1,4 +1,5 @@
 .env
+local/.env
 shared/traefik/acme.json
 shared/mariadb/
 sites/*/wp-content/

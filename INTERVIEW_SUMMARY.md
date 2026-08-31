@@ -2,13 +2,13 @@
 
 ## What This Project Demonstrates
 
-A production-ready, multi-site WordPress infrastructure using Docker Compose, showing:
+A proof-of-concept multi-site WordPress infrastructure using Docker Compose, showing:
 - **Container orchestration** (Docker Compose with multiple services)
 - **Reverse proxy routing** (Traefik for domain-based routing)
 - **Environment management** (.env files, secrets handling)
 - **Networking** (multiple networks: proxy, db, internal)
 - **Health checks** (service dependencies, graceful startup)
-- **Local vs production configs** (compose file overrides)
+- **Environment separation** (an isolated local stack)
 - **Infrastructure as code** (reproducible automation)
 
 ---
@@ -106,7 +106,7 @@ volumes:
 
 **Why this matters:** Separates ephemeral container files from data that must survive restarts.
 
-### 5. Local vs Production (Compose Overrides)
+### 5. Local and Production Separation
 
 **Production (shared/):**
 ```bash
@@ -114,13 +114,14 @@ docker compose -f docker-compose.yml up -d
 # Uses: traefik.yml (Cloudflare ACME), acme.json (cert storage)
 ```
 
-**Local testing (shared/):**
+**Local testing (`local/`):**
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.local.override.yml up -d
-# Uses: traefik.local.yml (self-signed certs), no ACME
+cd local
+docker compose up -d
+# Uses a local Nginx, WordPress, and MariaDB stack without Traefik or Cloudflare
 ```
 
-**Why this matters:** Single codebase works for both environments without branching code.
+**Why this matters:** Local testing cannot change or obscure the production configuration.
 
 ### 6. Automation Scripts
 
@@ -141,7 +142,7 @@ docker compose -f docker-compose.yml -f docker-compose.local.override.yml up -d
 | **Health checks** | Services wait for dependencies to be healthy |
 | **Labels** | Traefik auto-discovers services via Docker labels |
 | **Environment variables** | .env files for secrets management |
-| **Compose overrides** | Different configs for local vs production |
+| **Environment separation** | Local services are contained under `local/` |
 | **Container dependencies** | `depends_on: condition: service_healthy` |
 | **Image pinning** | Specific version tags (e.g., `wordpress:php8.5-fpm`, `mariadb:12.2.2-noble`) |
 

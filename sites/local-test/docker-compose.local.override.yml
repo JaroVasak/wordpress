@@ -1,7 +1,0 @@
-services:
-  nginx:
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.${SITE_NAME}.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.${SITE_NAME}.entrypoints=web"
-      - "traefik.docker.network=proxy"

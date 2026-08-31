@@ -1,5 +1,0 @@
-services:
-  traefik:
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${PWD}/traefik/traefik.local.yml:/traefik.yml:ro
