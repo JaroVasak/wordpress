@@ -11,8 +11,28 @@ wordpress/
   local/                      # Isolated local-only stack
   shared/                     # Traefik + MariaDB (shared infrastructure)
   sites/
-    example-com/            # Template — copy this for each new site
+    example-com/              # Template — copy this for each new site
 ```
+
+## Architecture
+
+Production requests follow this path:
+
+```text
+client -> Traefik -> site nginx -> WordPress PHP-FPM -> MariaDB
+```
+
+Traefik listens on ports 80 and 443. It discovers only site nginx services
+that have `traefik.enable=true`. Each site has an internal network between
+nginx and WordPress. All WordPress services use the shared MariaDB service
+through the `db` network.
+
+Persistent data is stored in these locations:
+
+- `shared/mariadb/data/` contains the MariaDB data.
+- `shared/traefik/acme.json` contains the ACME certificate data.
+- `sites/<site>/wp-content/` contains site uploads, plugins, and themes.
+- Each site has a `wordpress_files` volume shared by nginx and WordPress.
 
 ## Prerequisites
 

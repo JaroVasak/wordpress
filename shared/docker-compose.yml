@@ -1,3 +1,4 @@
+---
 networks:
   proxy:
     name: proxy
@@ -11,16 +12,29 @@ services:
     image: traefik:v3
     container_name: traefik
     restart: unless-stopped
+    command:
+      - "--api.dashboard=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      # yamllint disable rule:line-length
+      - "--certificatesresolvers.cloudflare.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}"
+      - "--certificatesresolvers.cloudflare.acme.storage=/acme.json"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53"
+      # yamllint enable rule:line-length
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=proxy"
+      - "--log.level=INFO"
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/traefik.yml:/traefik.yml:ro
       - ./traefik/acme.json:/acme.json
     environment:
-      - CF_API_TOKEN=${CF_API_TOKEN}
-      - ACME_EMAIL=${ACME_EMAIL}
+      - CF_API_TOKEN=${CF_API_TOKEN:?CF_API_TOKEN is required}
     networks:
       - proxy
 
@@ -35,7 +49,7 @@ services:
     networks:
       - db
     healthcheck:
-      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
       timeout: 5s
       retries: 5
