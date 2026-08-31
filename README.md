@@ -111,6 +111,17 @@ and then starts Traefik and MariaDB.
 If `shared/.env` already uses `CF_API_TOKEN`, rename it to
 `CF_DNS_API_TOKEN` before you restart Traefik.
 
+### Automation input rules
+
+The setup scripts reject values that could change paths, `.env` parsing, or SQL
+statements:
+
+- Site names use lowercase letters, digits, and single hyphens. Maximum: 63 characters.
+- Domains must be lowercase, contain at least one dot, and use valid DNS labels.
+- Database names use letters, digits, and underscores. Maximum: 64 characters.
+- Database users use letters, digits, and underscores. Maximum: 32 characters.
+- Database passwords contain 16–128 characters from `A-Z`, `a-z`, `0-9`, or `._~!@%^+=,:/-`.
+
 ---
 
 ## 2. Adding a new site

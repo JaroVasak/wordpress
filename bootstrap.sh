@@ -3,6 +3,12 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$REPO_DIR/shared"
+# shellcheck source=scripts/lib/validation.sh
+source "$REPO_DIR/scripts/lib/validation.sh"
+
+require_command curl
+require_command docker
+require_docker_compose
 
 echo "=== Base stack setup ==="
 echo ""
@@ -13,19 +19,35 @@ if [ -f "$BASE_DIR/.env" ]; then
   [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
 fi
 
-read -rp  "ACME email (for Let's Encrypt notifications): " ACME_EMAIL
-read -rsp "Cloudflare DNS API token: " CF_DNS_API_TOKEN; echo
-read -rsp "MariaDB root password: " MYSQL_ROOT_PASSWORD; echo
+read -rp "ACME email (for Let's Encrypt notifications): " ACME_EMAIL
+is_valid_email "$ACME_EMAIL" || \
+  die "Enter a valid email address with a lowercase domain."
+
+read -rsp "Cloudflare DNS API token: " CF_DNS_API_TOKEN
+echo
+is_valid_cloudflare_token "$CF_DNS_API_TOKEN" || \
+  die "The Cloudflare token contains unsupported characters."
+
+read -rsp "MariaDB root password: " MYSQL_ROOT_PASSWORD
+echo
+is_valid_password "$MYSQL_ROOT_PASSWORD" || \
+  die "The MariaDB password does not meet the documented input rules."
 
 # Verify that the Cloudflare token is active before writing anything
 echo ""
 echo "Verifying Cloudflare token..."
-CF_VERIFY=$(curl -sf "https://api.cloudflare.com/client/v4/user/tokens/verify" \
-  -H "Authorization: Bearer $CF_DNS_API_TOKEN" | grep -o '"status":"[^"]*"' | cut -d: -f2 | tr -d '"')
+if ! CF_RESPONSE=$(curl -fsS \
+  "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+  -H "Authorization: Bearer $CF_DNS_API_TOKEN"); then
+  die "Cloudflare token verification request failed."
+fi
+
+CF_VERIFY=$(printf '%s' "$CF_RESPONSE" | \
+  grep -oE '"status"[[:space:]]*:[[:space:]]*"[^"]+"' | \
+  head -n 1 | cut -d'"' -f4 || true)
 
 if [ "$CF_VERIFY" != "active" ]; then
-  echo "Error: Cloudflare token is invalid or inactive. Aborting."
-  exit 1
+  die "Cloudflare token is invalid or inactive."
 fi
 echo "Token OK."
 echo ""

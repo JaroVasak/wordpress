@@ -4,32 +4,67 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_DIR="$REPO_DIR/sites/example-com"
 BASE_ENV="$REPO_DIR/shared/.env"
+# shellcheck source=scripts/lib/validation.sh
+source "$REPO_DIR/scripts/lib/validation.sh"
+
+require_command docker
+require_command openssl
+require_docker_compose
+
+[ -d "$TEMPLATE_DIR" ] || die "Site template not found: $TEMPLATE_DIR"
+[ -f "$BASE_ENV" ] || die "Run ./bootstrap.sh before creating a site."
 
 echo "=== New site setup ==="
 echo ""
 
 # ── check shared stack is running ────────────────────────────────────────────
-if ! docker inspect mariadb &>/dev/null; then
-  echo "Error: MariaDB container is not running. Run ./bootstrap.sh first."
-  exit 1
-fi
+MARIADB_RUNNING=$(docker inspect --format '{{.State.Running}}' mariadb 2>/dev/null || true)
+[[ "$MARIADB_RUNNING" == "true" ]] || \
+  die "MariaDB is not running. Run ./bootstrap.sh first."
 
-MYSQL_ROOT_PASSWORD="$(grep '^MYSQL_ROOT_PASSWORD=' "$BASE_ENV" | cut -d= -f2-)"
+MYSQL_ROOT_PASSWORD=$(sed -n 's/^MYSQL_ROOT_PASSWORD=//p' "$BASE_ENV" | tail -n 1)
+[ -n "$MYSQL_ROOT_PASSWORD" ] || \
+  die "MYSQL_ROOT_PASSWORD is missing from shared/.env."
 
 echo "Waiting for MariaDB to be ready..."
-until docker exec mariadb mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1" &>/dev/null 2>&1; do
+MARIADB_READY=false
+for ((attempt = 1; attempt <= 60; attempt++)); do
+  if docker exec mariadb mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" \
+    -e "SELECT 1" &>/dev/null; then
+    MARIADB_READY=true
+    break
+  fi
   printf '.'
   sleep 2
 done
+if [[ "$MARIADB_READY" != "true" ]]; then
+  echo
+  die "MariaDB did not become ready within two minutes."
+fi
 echo " ready."
 echo ""
 
 # ── prompts ──────────────────────────────────────────────────────────────────
-read -rp  "Site name slug (e.g. example-com): " SITE_NAME
-read -rp  "Domain (e.g. example.com): " DOMAIN
-read -rp  "DB name (e.g. example_com): " DB_NAME
-read -rp  "DB user (e.g. example_com_user): " DB_USER
-read -rsp "DB password: " DB_PASSWORD; echo
+read -rp "Site name slug (e.g. example-com): " SITE_NAME
+is_valid_site_name "$SITE_NAME" || \
+  die "Use a lowercase slug with letters, digits, and single hyphens."
+
+read -rp "Domain (e.g. example.com): " DOMAIN
+is_valid_domain "$DOMAIN" || \
+  die "Enter a valid lowercase domain name."
+
+read -rp "DB name (e.g. example_com): " DB_NAME
+is_valid_db_name "$DB_NAME" || \
+  die "Use at most 64 letters, digits, or underscores for the DB name."
+
+read -rp "DB user (e.g. example_com_user): " DB_USER
+is_valid_db_user "$DB_USER" || \
+  die "Use at most 32 letters, digits, or underscores for the DB user."
+
+read -rsp "DB password: " DB_PASSWORD
+echo
+is_valid_password "$DB_PASSWORD" || \
+  die "The database password does not meet the documented input rules."
 
 SITE_DIR="$REPO_DIR/sites/$SITE_NAME"
 
@@ -65,6 +100,7 @@ WORDPRESS_NONCE_SALT=$(wp_key)
 EOF
 chmod 600 "$SITE_DIR/.env"
 
+# All SQL values below passed the strict allowlists above.
 # ── create database and user in MariaDB ───────────────────────────────────────
 echo ""
 echo "Creating database and user in MariaDB..."
