@@ -64,9 +64,10 @@ touch "$BASE_DIR/traefik/acme.json"
 chmod 600 "$BASE_DIR/traefik/acme.json"
 
 # ── start shared stack ───────────────────────────────────────────────────────
-echo "Starting shared stack (Traefik + MariaDB)..."
-docker compose -f "$BASE_DIR/docker-compose.yml" up -d
+echo "Starting shared stack (socket proxy + Traefik + MariaDB)..."
+docker compose -f "$BASE_DIR/docker-compose.yml" \
+  up -d --wait --wait-timeout 120
 
 echo ""
-echo "Base stack is up."
+echo "Base stack is ready."
 echo "Run ./new-site.sh to add your first site."

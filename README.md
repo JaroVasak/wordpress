@@ -9,10 +9,21 @@ Multi-site WordPress stack with Traefik v3 as reverse proxy, Cloudflare DNS chal
 ```
 wordpress/
   local/                      # Isolated local-only stack
-  shared/                     # Traefik + MariaDB (shared infrastructure)
+  shared/                     # Socket proxy + Traefik + MariaDB
+  scripts/lib/                # Internal shell libraries
   sites/
     example-com/              # Template — copy this for each new site
 ```
+
+Root-level shell scripts are operator commands:
+
+- `bootstrap.sh` initializes the shared infrastructure once per server.
+- `new-site.sh` provisions one additional site and can be run repeatedly.
+- `backup-site.sh` creates an on-demand database dump for one site.
+- `install-backup-cron.sh` installs the daily database backup schedule.
+
+Files under `scripts/lib/` are sourced by the operator commands and are not run
+directly.
 
 ## Architecture
 
@@ -98,7 +109,8 @@ token has the required zone permissions.
 
 The script prompts for credentials, confirms that the Cloudflare token is
 active, creates `shared/.env` and `traefik/acme.json` with correct permissions,
-and then starts Traefik and MariaDB.
+and then starts the socket proxy, Traefik, and MariaDB. It fails if the shared
+services do not become ready within two minutes.
 
 **shared/.env variables:**
 
@@ -134,6 +146,9 @@ The script prompts for the site slug, domain, and database credentials. It
 checks for existing Docker and MariaDB resources before it copies the template,
 creates the database and user, and starts the site stack.
 
+The script waits up to two minutes for the site containers. A startup or health
+failure triggers the provisioning rollback.
+
 If provisioning fails, the script removes only resources created during that
 run. If rollback cannot remove a database or Docker resource, it preserves the
 site directory and reports the resources that need manual cleanup.
@@ -153,11 +168,20 @@ dump through the running MariaDB container, and keeps 14 days of matching dump
 files by default. Set `BACKUP_RETENTION_DAYS` to a different positive number if
 needed.
 
-After the repository is installed on the server, add one cron entry per site.
-Replace `/path/to/wordpress` with the real repository path:
+On an Ubuntu server, install the daily 03:00 backup schedule after the site is
+provisioned:
 
-```cron
-0 3 * * * BACKUP_RETENTION_DAYS=14 /path/to/wordpress/backup-site.sh example-com /var/backups/wordpress
+```bash
+sudo ./install-backup-cron.sh example-com
+```
+
+The installer writes `/etc/cron.d/wordpress-db-backup-example-com`, uses
+`/var/backups/wordpress` by default, and creates the site backup directory with
+owner-only permissions. Re-running it replaces only that site's schedule. Pass
+a different absolute backup root and retention period when needed:
+
+```bash
+sudo ./install-backup-cron.sh example-com /mnt/backups/wordpress 30
 ```
 
 The script backs up only the database. Back up each site's `wp-content` and

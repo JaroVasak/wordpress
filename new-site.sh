@@ -209,7 +209,8 @@ mariadb_scalar \
 echo "Starting site stack..."
 STACK_START_ATTEMPTED=true
 docker compose --project-name "$COMPOSE_PROJECT_NAME" \
-  -f "$SITE_DIR/docker-compose.yml" up -d
+  -f "$SITE_DIR/docker-compose.yml" \
+  up -d --wait --wait-timeout 120
 trap - EXIT
 
 echo ""
