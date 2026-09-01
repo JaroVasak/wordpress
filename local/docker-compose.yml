@@ -21,6 +21,8 @@ services:
   nginx:
     image: nginx:1.31.4-alpine
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     logging: *default-logging
     ports:
       - "${LOCAL_PORT:-8080}:80"
@@ -37,6 +39,8 @@ services:
   wordpress:
     image: wordpress:7.1-php8.5-fpm
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     logging: *default-logging
     volumes:
       - wordpress_files:/var/www/html
@@ -65,6 +69,8 @@ services:
   mariadb:
     image: mariadb:12.2.2-noble
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     logging: *default-logging
     volumes:
       - mariadb_data:/var/lib/mysql

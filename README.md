@@ -64,8 +64,8 @@ must have these permissions:
 3. Click **Create Token**
 4. Use the **Edit zone DNS** template
 5. Confirm that the token has the permissions listed above
-6. Under **Zone Resources**, set to `Include` → `All zones`
-   - This lets one token cover every domain you add in future
+6. Under **Zone Resources**, select only the zones served by this stack
+   - Add a zone to the token before you provision a site for a new zone
 7. Leave **TTL** empty (no expiry) — Traefik needs the token for renewals
 8. Click **Continue to summary** → **Create Token**
 9. **Copy the token immediately** — Cloudflare shows it only once
@@ -209,6 +209,11 @@ Traefik remains responsible for HTTP-to-HTTPS redirects, TLS, and certificate
 management. FastCGI page caching is intentionally not enabled by the generic
 template because authenticated sessions and plugin behavior need site-specific
 cache rules and testing.
+
+Traefik reads Docker metadata through a restricted socket proxy. The proxy is
+available only on an internal Docker network and does not publish a host port.
+Nginx mounts WordPress content read-only. WordPress disables PHP file editing
+through the administration dashboard.
 
 ---
 
