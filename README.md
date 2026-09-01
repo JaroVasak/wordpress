@@ -21,6 +21,7 @@ Root-level shell scripts are operator commands:
 - `new-site.sh` provisions one additional site and can be run repeatedly.
 - `backup-site.sh` creates an on-demand database dump for one site.
 - `install-backup-cron.sh` installs the daily database backup schedule.
+- `validate.sh` checks scripts, Compose files, and Nginx configurations.
 
 Files under `scripts/lib/` are sourced by the operator commands and are not run
 directly.
@@ -149,6 +150,9 @@ creates the database and user, and starts the site stack.
 The script waits up to two minutes for the site containers. A startup or health
 failure triggers the provisioning rollback.
 
+After successful provisioning, the script prints the command that installs the
+site's daily database backup schedule.
+
 If provisioning fails, the script removes only resources created during that
 run. If rollback cannot remove a database or Docker resource, it preserves the
 site directory and reports the resources that need manual cleanup.
@@ -199,6 +203,21 @@ image, and test the local stack before a production update.
 
 Version tags can still be changed in a container registry. Pin image digests as
 well if deployments need immutable image content.
+
+---
+
+## Repository validation
+
+Run all repository checks before provisioning or committing infrastructure
+changes:
+
+```bash
+./validate.sh
+```
+
+The command checks Bash syntax, runs ShellCheck, renders every Compose file,
+tests both Nginx configurations in the pinned Nginx image, and checks the Git
+diff for whitespace errors. It does not start the WordPress stacks.
 
 ---
 

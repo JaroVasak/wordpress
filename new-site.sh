@@ -215,3 +215,5 @@ trap - EXIT
 
 echo ""
 echo "Done. $DOMAIN should be live once Traefik issues the certificate (up to 1 min)."
+echo "Schedule daily database backups with:"
+echo "  sudo ./install-backup-cron.sh $SITE_NAME"

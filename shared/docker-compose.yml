@@ -55,6 +55,7 @@ services:
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.websecure.http.aliasheadersstrategy=delete"
+      - "--ping=true"
       # yamllint disable rule:line-length
       - "--certificatesresolvers.cloudflare.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}"
       - "--certificatesresolvers.cloudflare.acme.storage=/acme.json"
@@ -75,6 +76,12 @@ services:
     networks:
       - proxy
       - socket-proxy
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   mariadb:
     image: mariadb:12.2.2-noble

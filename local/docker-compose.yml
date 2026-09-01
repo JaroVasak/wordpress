@@ -35,6 +35,12 @@ services:
         condition: service_healthy
     networks:
       - frontend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   wordpress:
     image: wordpress:7.1-php8.5-fpm
