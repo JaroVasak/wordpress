@@ -130,7 +130,13 @@ statements:
 ./new-site.sh
 ```
 
-The script will prompt for the site slug, domain, and database credentials, copy the `sites/example-com` template, create the database and user in MariaDB, then start the site stack.
+The script prompts for the site slug, domain, and database credentials. It
+checks for existing Docker and MariaDB resources before it copies the template,
+creates the database and user, and starts the site stack.
+
+If provisioning fails, the script removes only resources created during that
+run. If rollback cannot remove a database or Docker resource, it preserves the
+site directory and reports the resources that need manual cleanup.
 
 ---
 

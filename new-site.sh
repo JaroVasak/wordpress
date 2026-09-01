@@ -67,17 +67,108 @@ is_valid_password "$DB_PASSWORD" || \
   die "The database password does not meet the documented input rules."
 
 SITE_DIR="$REPO_DIR/sites/$SITE_NAME"
+COMPOSE_PROJECT_NAME="$SITE_NAME"
+SITE_VOLUME="${COMPOSE_PROJECT_NAME}_wordpress_files"
+SITE_NETWORK="${COMPOSE_PROJECT_NAME}_internal"
 
 if [ -d "$SITE_DIR" ]; then
-  echo "Error: $SITE_DIR already exists."
-  exit 1
+  die "$SITE_DIR already exists."
 fi
+
+# ── collision checks ──────────────────────────────────────────────────────────
+for container_name in "${SITE_NAME}-nginx" "${SITE_NAME}-fpm"; do
+  if docker container inspect "$container_name" &>/dev/null; then
+    die "Docker container already exists: $container_name"
+  fi
+done
+
+if docker volume inspect "$SITE_VOLUME" &>/dev/null; then
+  die "Docker volume already exists: $SITE_VOLUME"
+fi
+
+if docker network inspect "$SITE_NETWORK" &>/dev/null; then
+  die "Docker network already exists: $SITE_NETWORK"
+fi
+
+mariadb_scalar() {
+  docker exec mariadb mariadb --batch --skip-column-names \
+    -uroot -p"$MYSQL_ROOT_PASSWORD" -e "$1"
+}
+
+if ! DATABASE_EXISTS=$(mariadb_scalar \
+  "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$DB_NAME';"); then
+  die "Could not check whether database $DB_NAME exists."
+fi
+[[ "$DATABASE_EXISTS" == "0" ]] || die "Database already exists: $DB_NAME"
+
+if ! DB_USER_EXISTS=$(mariadb_scalar \
+  "SELECT COUNT(*) FROM mysql.user WHERE User = '$DB_USER' AND Host = '%';"); then
+  die "Could not check whether database user $DB_USER exists."
+fi
+[[ "$DB_USER_EXISTS" == "0" ]] || die "Database user already exists: $DB_USER"
 
 # ── generate secrets ──────────────────────────────────────────────────────────
 wp_key() { openssl rand -hex 32; }
 TABLE_PREFIX="wp$(openssl rand -hex 3)_"
 
+# ── rollback ──────────────────────────────────────────────────────────────────
+SITE_DIR_CREATED=false
+DATABASE_CREATED=false
+DB_USER_CREATED=false
+STACK_START_ATTEMPTED=false
+
+rollback_provisioning() {
+  local exit_code=$?
+  local cleanup_failed=false
+  local expected_site_prefix="$REPO_DIR/sites/"
+
+  (( exit_code != 0 )) || return 0
+  trap - EXIT
+  set +e
+
+  echo ""
+  echo "Provisioning failed. Rolling back resources from this run..." >&2
+
+  if [[ "$STACK_START_ATTEMPTED" == "true" ]]; then
+    if ! docker compose --project-name "$COMPOSE_PROJECT_NAME" \
+      -f "$SITE_DIR/docker-compose.yml" down --volumes --remove-orphans; then
+      echo "Warning: Could not remove the attempted site stack." >&2
+      cleanup_failed=true
+    fi
+  fi
+
+  if [[ "$DB_USER_CREATED" == "true" ]]; then
+    if ! mariadb_scalar "DROP USER IF EXISTS '$DB_USER'@'%';" >/dev/null; then
+      echo "Warning: Could not remove database user $DB_USER." >&2
+      cleanup_failed=true
+    fi
+  fi
+
+  if [[ "$DATABASE_CREATED" == "true" ]]; then
+    if ! mariadb_scalar "DROP DATABASE IF EXISTS \`$DB_NAME\`;" >/dev/null; then
+      echo "Warning: Could not remove database $DB_NAME." >&2
+      cleanup_failed=true
+    fi
+  fi
+
+  if [[ "$SITE_DIR_CREATED" == "true" ]]; then
+    if [[ "$cleanup_failed" == "true" ]]; then
+      echo "Warning: Preserved $SITE_DIR for manual recovery." >&2
+    elif [[ "$SITE_DIR" == "$expected_site_prefix"* && \
+      "$SITE_DIR" != "$TEMPLATE_DIR" && -d "$SITE_DIR" ]]; then
+      rm -rf -- "$SITE_DIR"
+    else
+      echo "Warning: Refused to remove unexpected path: $SITE_DIR" >&2
+    fi
+  fi
+
+  exit "$exit_code"
+}
+
+trap rollback_provisioning EXIT
+
 # ── copy template ─────────────────────────────────────────────────────────────
+SITE_DIR_CREATED=true
 cp -r "$TEMPLATE_DIR" "$SITE_DIR"
 mkdir -p "$SITE_DIR/wp-content"
 
@@ -104,16 +195,22 @@ chmod 600 "$SITE_DIR/.env"
 # ── create database and user in MariaDB ───────────────────────────────────────
 echo ""
 echo "Creating database and user in MariaDB..."
-docker exec -i mariadb mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" <<SQL
-CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;
-CREATE USER IF NOT EXISTS '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'%';
-FLUSH PRIVILEGES;
-SQL
+mariadb_scalar "CREATE DATABASE \`$DB_NAME\`;" >/dev/null
+DATABASE_CREATED=true
+
+mariadb_scalar \
+  "CREATE USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';" >/dev/null
+DB_USER_CREATED=true
+
+mariadb_scalar \
+  "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'%';" >/dev/null
 
 # ── bring up site ─────────────────────────────────────────────────────────────
 echo "Starting site stack..."
-docker compose -f "$SITE_DIR/docker-compose.yml" up -d
+STACK_START_ATTEMPTED=true
+docker compose --project-name "$COMPOSE_PROJECT_NAME" \
+  -f "$SITE_DIR/docker-compose.yml" up -d
+trap - EXIT
 
 echo ""
 echo "Done. $DOMAIN should be live once Traefik issues the certificate (up to 1 min)."
