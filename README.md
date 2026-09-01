@@ -148,6 +148,22 @@ site directory and reports the resources that need manual cleanup.
 | `db`       | MariaDB ↔ WordPress FPM (database access)    |
 | `internal` | nginx ↔ WordPress FPM within a site (no external access) |
 
+## Nginx request safeguards
+
+The production and local Nginx configurations:
+
+- Reject hidden files, direct `wp-config.php` access, and PHP under upload directories.
+- Reject requests for PHP scripts that do not exist on disk.
+- Add common content-type, clickjacking, and referrer security headers.
+- Compress suitable text responses with a moderate gzip level.
+- Cache static assets for 30 days and omit them from access logs.
+- Hide Nginx and PHP versions from HTTP responses.
+
+Traefik remains responsible for HTTP-to-HTTPS redirects, TLS, and certificate
+management. FastCGI page caching is intentionally not enabled by the generic
+template because authenticated sessions and plugin behavior need site-specific
+cache rules and testing.
+
 ---
 
 ## Git safety
