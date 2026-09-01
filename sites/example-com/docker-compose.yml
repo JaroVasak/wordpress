@@ -12,7 +12,7 @@ volumes:
 
 services:
   nginx:
-    image: nginx:alpine
+    image: nginx:1.31.4-alpine
     container_name: ${SITE_NAME:?required}-nginx
     restart: unless-stopped
     volumes:
@@ -33,7 +33,7 @@ services:
       - "traefik.docker.network=proxy"
 
   wordpress:
-    image: wordpress:php8.5-fpm
+    image: wordpress:7.1-php8.5-fpm
     container_name: ${SITE_NAME:?required}-fpm
     restart: unless-stopped
     volumes:

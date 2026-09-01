@@ -140,6 +140,18 @@ site directory and reports the resources that need manual cleanup.
 
 ---
 
+## Container image updates
+
+Compose files use exact application version tags. This prevents an ordinary
+restart from silently moving to a newer application release. Review release
+notes, update the tag in every production and local Compose file that uses the
+image, and test the local stack before a production update.
+
+Version tags can still be changed in a container registry. Pin image digests as
+well if deployments need immutable image content.
+
+---
+
 ## Networks
 
 | Network    | Purpose                                      |
