@@ -11,10 +11,17 @@ volumes:
   wordpress_files:
   wordpress_content:
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   nginx:
     image: nginx:1.31.4-alpine
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "${LOCAL_PORT:-8080}:80"
     volumes:
@@ -30,6 +37,7 @@ services:
   wordpress:
     image: wordpress:7.1-php8.5-fpm
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - wordpress_files:/var/www/html
       - wordpress_content:/var/www/html/wp-content
@@ -57,6 +65,7 @@ services:
   mariadb:
     image: mariadb:12.2.2-noble
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - mariadb_data:/var/lib/mysql
     environment:

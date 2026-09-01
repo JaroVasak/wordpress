@@ -7,11 +7,18 @@ networks:
     name: db
     driver: bridge
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   traefik:
     image: traefik:v3.7.12
     container_name: traefik
     restart: unless-stopped
+    logging: *default-logging
     command:
       - "--api.dashboard=false"
       - "--entrypoints.web.address=:80"
@@ -42,6 +49,7 @@ services:
     image: mariadb:12.2.2-noble
     container_name: mariadb
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - ./mariadb/data:/var/lib/mysql
     environment:

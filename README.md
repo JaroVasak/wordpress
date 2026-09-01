@@ -152,6 +152,14 @@ well if deployments need immutable image content.
 
 ---
 
+## Container logs
+
+Every service uses Docker's `json-file` logging driver. Each container keeps up
+to three 10 MB log files. This limits local disk use while preserving support
+for `docker compose logs`.
+
+---
+
 ## Networks
 
 | Network    | Purpose                                      |
