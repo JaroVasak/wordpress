@@ -10,21 +10,26 @@ Multi-site WordPress stack with Traefik v3 as reverse proxy, Cloudflare DNS chal
 wordpress/
   local/                      # Isolated local-only stack
   shared/                     # Socket proxy + Traefik + MariaDB
-  scripts/lib/                # Internal shell libraries
+  scripts/                    # Operator commands
+    lib/                      # Internal shell libraries
   sites/
     example-com/              # Template — copy this for each new site
 ```
 
-Root-level shell scripts are operator commands:
+Executable files under `scripts/` are operator commands:
 
-- `bootstrap.sh` initializes the shared infrastructure once per server.
-- `new-site.sh` provisions one additional site and can be run repeatedly.
-- `backup-site.sh` creates an on-demand database dump for one site.
-- `install-backup-cron.sh` installs the daily database backup schedule.
-- `validate.sh` checks scripts, Compose files, and Nginx configurations.
+- `scripts/bootstrap.sh` initializes the shared infrastructure once per server.
+- `scripts/new-site.sh` provisions one additional site and can be run repeatedly.
+- `scripts/backup-site.sh` creates an on-demand database dump for one site.
+- `scripts/install-backup-cron.sh` installs the daily database backup schedule.
+- `scripts/validate.sh` checks scripts, Compose files, and Nginx configurations.
 
 Files under `scripts/lib/` are sourced by the operator commands and are not run
 directly.
+
+The examples below run from the repository root. You can also change to the
+`scripts/` directory and omit `scripts/` from each path. The scripts locate the
+repository from their own file paths, so they work from any current directory.
 
 ## Architecture
 
@@ -105,7 +110,7 @@ token has the required zone permissions.
 ## 1. Base stack setup
 
 ```bash
-./bootstrap.sh
+./scripts/bootstrap.sh
 ```
 
 The script prompts for credentials, confirms that the Cloudflare token is
@@ -140,7 +145,7 @@ statements:
 ## 2. Adding a new site
 
 ```bash
-./new-site.sh
+./scripts/new-site.sh
 ```
 
 The script prompts for the site slug, domain, and database credentials. It
@@ -164,7 +169,7 @@ site directory and reports the resources that need manual cleanup.
 Create a compressed dump for one provisioned site:
 
 ```bash
-./backup-site.sh example-com /var/backups/wordpress
+./scripts/backup-site.sh example-com /var/backups/wordpress
 ```
 
 The script reads only the database name from the site's `.env`, creates the
@@ -176,7 +181,7 @@ On an Ubuntu server, install the daily 03:00 backup schedule after the site is
 provisioned:
 
 ```bash
-sudo ./install-backup-cron.sh example-com
+sudo ./scripts/install-backup-cron.sh example-com
 ```
 
 The installer writes `/etc/cron.d/wordpress-db-backup-example-com`, uses
@@ -185,7 +190,7 @@ owner-only permissions. Re-running it replaces only that site's schedule. Pass
 a different absolute backup root and retention period when needed:
 
 ```bash
-sudo ./install-backup-cron.sh example-com /mnt/backups/wordpress 30
+sudo ./scripts/install-backup-cron.sh example-com /mnt/backups/wordpress 30
 ```
 
 The script backs up only the database. Back up each site's `wp-content` and
@@ -212,12 +217,16 @@ Run all repository checks before provisioning or committing infrastructure
 changes:
 
 ```bash
-./validate.sh
+./scripts/validate.sh
 ```
 
 The command checks Bash syntax, runs ShellCheck, renders every Compose file,
 tests both Nginx configurations in the pinned Nginx image, and checks the Git
 diff for whitespace errors. It does not start the WordPress stacks.
+
+GitHub Actions runs the same command for pull requests, pushes to `main`, and
+manual workflow runs. The validation workflow has read-only repository access
+and contains no deployment credentials or Hetzner integration.
 
 ---
 

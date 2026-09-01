@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/lib/validation.sh
 source "$REPO_DIR/scripts/lib/validation.sh"
 
@@ -36,7 +36,8 @@ done
 SITE_DIR="$REPO_DIR/sites/$SITE_NAME"
 [ -d "$SITE_DIR" ] || die "Site directory not found: $SITE_DIR"
 [ -f "$SITE_DIR/.env" ] || die "Site environment file not found: $SITE_DIR/.env"
-[ -x "$REPO_DIR/backup-site.sh" ] || die "backup-site.sh is not executable."
+[ -x "$REPO_DIR/scripts/backup-site.sh" ] || \
+  die "scripts/backup-site.sh is not executable."
 [ -d /etc/cron.d ] || die "/etc/cron.d is not available."
 
 install -d -m 700 "$BACKUP_ROOT/$SITE_NAME"
@@ -56,7 +57,7 @@ cat > "$TEMP_FILE" <<EOF
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-0 3 * * * root BACKUP_RETENTION_DAYS=$BACKUP_RETENTION_DAYS '$REPO_DIR/backup-site.sh' '$SITE_NAME' '$BACKUP_ROOT'
+0 3 * * * root BACKUP_RETENTION_DAYS=$BACKUP_RETENTION_DAYS '$REPO_DIR/scripts/backup-site.sh' '$SITE_NAME' '$BACKUP_ROOT'
 EOF
 
 chown root:root "$TEMP_FILE"

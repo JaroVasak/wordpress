@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_DIR="$REPO_DIR/shared"
 # shellcheck source=scripts/lib/validation.sh
 source "$REPO_DIR/scripts/lib/validation.sh"
@@ -70,4 +70,4 @@ docker compose -f "$BASE_DIR/docker-compose.yml" \
 
 echo ""
 echo "Base stack is ready."
-echo "Run ./new-site.sh to add your first site."
+echo "Run '$REPO_DIR/scripts/new-site.sh' to add your first site."

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE_DIR="$REPO_DIR/sites/example-com"
 BASE_ENV="$REPO_DIR/shared/.env"
 # shellcheck source=scripts/lib/validation.sh
@@ -12,7 +12,8 @@ require_command openssl
 require_docker_compose
 
 [ -d "$TEMPLATE_DIR" ] || die "Site template not found: $TEMPLATE_DIR"
-[ -f "$BASE_ENV" ] || die "Run ./bootstrap.sh before creating a site."
+[ -f "$BASE_ENV" ] || \
+  die "Run $REPO_DIR/scripts/bootstrap.sh before creating a site."
 
 echo "=== New site setup ==="
 echo ""
@@ -20,7 +21,7 @@ echo ""
 # ── check shared stack is running ────────────────────────────────────────────
 MARIADB_RUNNING=$(docker inspect --format '{{.State.Running}}' mariadb 2>/dev/null || true)
 [[ "$MARIADB_RUNNING" == "true" ]] || \
-  die "MariaDB is not running. Run ./bootstrap.sh first."
+  die "MariaDB is not running. Run $REPO_DIR/scripts/bootstrap.sh first."
 
 MYSQL_ROOT_PASSWORD=$(sed -n 's/^MYSQL_ROOT_PASSWORD=//p' "$BASE_ENV" | tail -n 1)
 [ -n "$MYSQL_ROOT_PASSWORD" ] || \
@@ -216,4 +217,4 @@ trap - EXIT
 echo ""
 echo "Done. $DOMAIN should be live once Traefik issues the certificate (up to 1 min)."
 echo "Schedule daily database backups with:"
-echo "  sudo ./install-backup-cron.sh $SITE_NAME"
+echo "  sudo '$REPO_DIR/scripts/install-backup-cron.sh' '$SITE_NAME'"
