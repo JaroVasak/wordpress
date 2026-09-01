@@ -78,3 +78,7 @@ is_valid_db_user() {
   (( ${#db_user} >= 1 && ${#db_user} <= 32 )) || return 1
   [[ "$db_user" =~ ^[A-Za-z0-9_]+$ ]]
 }
+
+is_positive_integer() {
+  [[ "$1" =~ ^[1-9][0-9]*$ ]]
+}

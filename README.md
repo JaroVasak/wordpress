@@ -140,6 +140,32 @@ site directory and reports the resources that need manual cleanup.
 
 ---
 
+## Database backups
+
+Create a compressed dump for one provisioned site:
+
+```bash
+./backup-site.sh example-com /var/backups/wordpress
+```
+
+The script reads only the database name from the site's `.env`, creates the
+dump through the running MariaDB container, and keeps 14 days of matching dump
+files by default. Set `BACKUP_RETENTION_DAYS` to a different positive number if
+needed.
+
+After the repository is installed on the server, add one cron entry per site.
+Replace `/path/to/wordpress` with the real repository path:
+
+```cron
+0 3 * * * BACKUP_RETENTION_DAYS=14 /path/to/wordpress/backup-site.sh example-com /var/backups/wordpress
+```
+
+The script backs up only the database. Back up each site's `wp-content` and
+`.env` separately, encrypt sensitive backups, and copy them off the Docker host.
+Test a restore before relying on the backups for recovery.
+
+---
+
 ## Container image updates
 
 Compose files use exact application version tags. This prevents an ordinary
