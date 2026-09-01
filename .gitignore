@@ -1,4 +1,6 @@
 .env
+.claude/
+backups/
 local/.env
 shared/traefik/acme.json
 shared/mariadb/
