@@ -1,0 +1,14 @@
+server_name  = "wordpress-prod"
+server_type  = "cx23"
+server_image = "ubuntu-24.04"
+location     = "nbg1"
+ssh_key_name = "hetzner-wordpress"
+
+# Replace this documentation-only address with your current public IP in CIDR form.
+ssh_allowed_cidrs = [
+  "203.0.113.10/32",
+]
+
+enable_ipv6              = true
+enable_backups           = false
+enable_server_protection = true

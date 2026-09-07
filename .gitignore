@@ -5,3 +5,22 @@ local/.env
 shared/traefik/acme.json
 shared/mariadb/
 sites/*/wp-content/
+
+# Terraform runtime data and local values
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+.terraform.tfstate.lock.info
+.terraformrc
+terraform.rc
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log
