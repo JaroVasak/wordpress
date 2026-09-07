@@ -12,8 +12,10 @@ wordpress/
   shared/                     # Socket proxy + Traefik + MariaDB
   scripts/                    # Operator commands
     lib/                      # Internal shell libraries
+  templates/
+    site/                     # Source template for new sites
   sites/
-    example-com/              # Template — copy this for each new site
+    <site-name>/               # Provisioned sites created from the template
 ```
 
 Executable files under `scripts/` are operator commands:
