@@ -8,6 +8,7 @@ Multi-site WordPress stack with Traefik v3 as reverse proxy, Cloudflare DNS chal
 
 ```
 wordpress/
+  infra/                      # Hetzner Terraform configuration
   local/                      # Isolated local-only stack
   shared/                     # Socket proxy + Traefik + MariaDB
   scripts/                    # Operator commands
@@ -20,8 +21,10 @@ wordpress/
 
 Executable files under `scripts/` are operator commands:
 
+- `scripts/bws-shell.sh` starts an optional shell with Bitwarden secrets.
 - `scripts/bootstrap.sh` initializes the shared infrastructure once per server.
 - `scripts/new-site.sh` provisions one additional site and can be run repeatedly.
+- `scripts/site-compose.sh` updates or recreates one existing site.
 - `scripts/backup-site.sh` creates an on-demand database dump for one site.
 - `scripts/install-backup-cron.sh` installs the daily database backup schedule.
 - `scripts/validate.sh` checks scripts, Compose files, and Nginx configurations.
@@ -53,15 +56,96 @@ Persistent data is stored in these locations:
 - `sites/<site>/wp-content/` contains site uploads, plugins, and themes.
 - Each site has a `wordpress_files` volume shared by nginx and WordPress.
 
+## Hetzner infrastructure
+
+Terraform configuration under `infra/` creates one Hetzner Cloud server and an
+attached firewall. It uses an existing SSH key from the selected Hetzner Cloud
+project. Cloudflare resources are not managed by this configuration.
+
+The configuration requires Terraform 1.16.1 and reads the Hetzner API token
+from the `HCLOUD_TOKEN` environment variable. The token is never stored in a
+Terraform input file.
+
+Prepare the inputs:
+
+```bash
+cd infra
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Set `ssh_key_name` to a key already uploaded to the Hetzner project. Replace
+the documentation address in `ssh_allowed_cidrs` with your current public IP
+using `/32` for IPv4 or `/128` for IPv6. SSH access from the whole internet is
+rejected by input validation.
+
+Review the infrastructure before creating resources:
+
+```bash
+terraform init
+terraform fmt -check
+terraform validate
+terraform plan
+```
+
+Run these commands in an environment where the selected secret manager has
+injected `HCLOUD_TOKEN`. Terraform reads it directly.
+
+After reviewing the plan, apply the configuration:
+
+```bash
+terraform apply
+```
+
+The server IPv4 and IPv6 addresses are Terraform outputs. Add the required DNS
+records to the existing Cloudflare zone, then continue with the base stack
+setup below.
+
+Server deletion and rebuild protection are enabled by default. To destroy the
+PoC later, set `enable_server_protection = false`, apply that change, and only
+then run `terraform destroy`.
+
 ## Prerequisites
 
 - Docker + Docker Compose
+- A secret manager that can inject environment variables
 - A Cloudflare account managing your domain(s)
 - Domain(s) with DNS pointing to your server
 
 ---
 
-## Credentials setup
+## Secret management
+
+The repository is independent of any secret-management vendor. Supply secrets
+as environment variables before running Terraform or an operator script. The
+secret manager, CI runner, or service manager is responsible for authentication
+and injection.
+
+| Environment variable | Consumer | Purpose |
+|---|---|---|
+| `HCLOUD_TOKEN` | Terraform | Hetzner infrastructure access |
+| `CF_DNS_API_TOKEN` | `bootstrap.sh` | Traefik DNS-01 challenges |
+| `MYSQL_ROOT_PASSWORD` | `bootstrap.sh` | MariaDB administration and backups |
+| `<SITE>_DB_PASSWORD` | Site scripts | Password for one site's database user |
+
+Secret names must be POSIX-compatible because scripts read them from the
+environment. Give automation only the secrets it requires. Keep secret-manager
+access credentials outside this repository.
+
+### Optional Bitwarden Secrets Manager shell
+
+The core scripts do not depend on Bitwarden. If you use Bitwarden Secrets
+Manager, install the `bws` command and run:
+
+```bash
+./scripts/bws-shell.sh
+```
+
+The helper asks for the machine access token without showing it. It then starts
+a clean interactive shell with all secrets that the machine account can read.
+The helper does not need a project ID when the machine account has access to
+only one project. It does not save the access token or secret values in the
+repository. Run the required Terraform or operator commands in that shell, and
+type `exit` when finished.
 
 ### ACME_EMAIL
 
@@ -89,23 +173,11 @@ must have these permissions:
 8. Click **Continue to summary** → **Create Token**
 9. **Copy the token immediately** — Cloudflare shows it only once
 
-**Verify the token works:**
-
-```bash
-curl "https://api.cloudflare.com/client/v4/user/tokens/verify" \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE"
-# expected: "status":"active"
-```
-
-This request confirms that the token is active. It does not confirm that the
-token has the required zone permissions.
-
 **Token security notes:**
 
 - Scope the token to zone read and DNS edit access only
-- Store it in a password manager; update `shared/.env` and restart Traefik if you ever rotate it
-- Keep `shared/.env` out of git (already covered by `.gitignore`)
-- Set strict permissions on the server: `chmod 600 shared/.env`
+- Store it under the exact name `CF_DNS_API_TOKEN`
+- Recreate the shared stack with `bootstrap.sh` after rotating the token
 
 ---
 
@@ -115,21 +187,33 @@ token has the required zone permissions.
 ./scripts/bootstrap.sh
 ```
 
-The script prompts for credentials, confirms that the Cloudflare token is
-active, creates `shared/.env` and `traefik/acme.json` with correct permissions,
-and then starts the socket proxy, Traefik, and MariaDB. It fails if the shared
-services do not become ready within two minutes.
+Before running the script, inject `CF_DNS_API_TOKEN` and
+`MYSQL_ROOT_PASSWORD`. If `ACME_EMAIL` is not set, the script asks for it. The
+script confirms that the Cloudflare token is active, creates `shared/.env` and
+`traefik/acme.json` with correct permissions, and starts the socket proxy,
+Traefik, and MariaDB. It fails if the shared services do not become ready within
+two minutes.
 
-**shared/.env variables:**
+For unattended input, set the non-secret value before the command:
 
-| Variable               | Description                                      |
-|------------------------|--------------------------------------------------|
-| `CF_DNS_API_TOKEN`     | Cloudflare token with zone read and DNS edit     |
-| `ACME_EMAIL`           | Email for Let's Encrypt notifications            |
-| `MYSQL_ROOT_PASSWORD`  | MariaDB root password                            |
+```bash
+ACME_EMAIL=admin@example.com ./scripts/bootstrap.sh
+```
 
-If `shared/.env` already uses `CF_API_TOKEN`, rename it to
-`CF_DNS_API_TOKEN` before you restart Traefik.
+`shared/.env` contains only non-secret configuration:
+
+| Variable | Description |
+|---|---|
+| `ACME_EMAIL` | Email for Let's Encrypt notifications |
+
+Compose receives the Cloudflare and MariaDB values from the environment and
+mounts them only into the services that require them as read-only Docker
+secrets.
+
+If MariaDB already contains data, `MYSQL_ROOT_PASSWORD` must match the password
+used when that data directory was initialized. Changing the container secret
+does not change an existing MariaDB root password. For a new production server,
+use the value stored in your secret manager from the first start.
 
 ### Automation input rules
 
@@ -146,12 +230,36 @@ statements:
 
 ## 2. Adding a new site
 
+Before provisioning a site, add its database password to your secret manager.
+Convert the site slug to uppercase, replace hyphens with underscores, and add
+the `_DB_PASSWORD` suffix. For example:
+
+```text
+Site slug: example-com
+Secret:    EXAMPLE_COM_DB_PASSWORD
+```
+
+Generate a separate value for every site. Each WordPress database user is
+granted access only to its own database. It never uses the MariaDB root
+password.
+
 ```bash
 ./scripts/new-site.sh
 ```
 
-The script prompts for the site slug, domain, and database credentials. It
-checks for existing Docker and MariaDB resources before it copies the template,
+If a non-secret input is not set, the script asks for it. You can also supply
+all non-secret inputs through the environment:
+
+```bash
+SITE_NAME=example-com \
+DOMAIN=example.com \
+DB_NAME=example_com \
+DB_USER=example_com_user \
+./scripts/new-site.sh
+```
+
+The script retrieves the matching site password from the environment. It checks
+for existing Docker and MariaDB resources before it copies the template,
 creates the database and user, and starts the site stack.
 
 The script waits up to two minutes for the site containers. A startup or health
@@ -195,9 +303,11 @@ a different absolute backup root and retention period when needed:
 sudo ./scripts/install-backup-cron.sh example-com /mnt/backups/wordpress 30
 ```
 
-The script backs up only the database. Back up each site's `wp-content` and
-`.env` separately, encrypt sensitive backups, and copy them off the Docker host.
-Test a restore before relying on the backups for recovery.
+The script backs up only the database. Back up each site's `wp-content`
+separately and copy backups off the Docker host. Site `.env` files now contain
+only non-secret configuration. WordPress generates authentication keys in its
+persistent configuration when the container is initialized. Test a restore
+before relying on the backups for recovery.
 
 ---
 
@@ -208,6 +318,13 @@ restart from silently moving to a newer application release. Review release
 notes, update the tag in every production and local Compose file that uses the
 image, and test the local stack before a production update.
 
+After injecting the site's database password, recreate an existing site after
+an image or configuration change:
+
+```bash
+./scripts/site-compose.sh example-com up -d --wait
+```
+
 Version tags can still be changed in a container registry. Pin image digests as
 well if deployments need immutable image content.
 
@@ -215,8 +332,7 @@ well if deployments need immutable image content.
 
 ## Repository validation
 
-Run all repository checks before provisioning or committing infrastructure
-changes:
+Run all application-stack checks before provisioning or committing changes:
 
 ```bash
 ./scripts/validate.sh
@@ -227,8 +343,9 @@ tests both Nginx configurations in the pinned Nginx image, and checks the Git
 diff for whitespace errors. It does not start the WordPress stacks.
 
 GitHub Actions runs the same command for pull requests, pushes to `main`, and
-manual workflow runs. The validation workflow has read-only repository access
-and contains no deployment credentials or Hetzner integration.
+manual workflow runs. It also checks Terraform formatting and validates the
+Hetzner configuration. The workflow has read-only repository access and does
+not receive Hetzner credentials, so it cannot create or change cloud resources.
 
 ---
 
@@ -273,4 +390,6 @@ through the administration dashboard.
 
 ## Git safety
 
-`.env` files and `acme.json` are gitignored. Commit only `.env.example` files with placeholder values.
+`.env` and `acme.json` runtime files are gitignored. Commit only example files
+with placeholder values. Never store secret-manager credentials in the
+repository.

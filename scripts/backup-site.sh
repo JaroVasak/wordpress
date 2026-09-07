@@ -51,13 +51,14 @@ trap cleanup_partial EXIT
 
 echo "Creating database backup for $SITE_NAME..."
 if ! docker exec mariadb sh -c '
+  password=$(cat /run/secrets/mariadb_root_password)
   exec mariadb-dump \
     --single-transaction \
     --quick \
     --skip-lock-tables \
     --default-character-set=utf8mb4 \
     -uroot \
-    -p"$MYSQL_ROOT_PASSWORD" \
+    -p"$password" \
     --databases "$1"
 ' sh "$DB_NAME" | gzip -6 > "$PARTIAL_FILE"; then
   die "Database backup failed."

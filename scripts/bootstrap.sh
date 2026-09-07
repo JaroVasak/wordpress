@@ -10,6 +10,16 @@ require_command curl
 require_command docker
 require_docker_compose
 
+[ -n "${CF_DNS_API_TOKEN:-}" ] || \
+  die "CF_DNS_API_TOKEN is missing from the environment."
+[ -n "${MYSQL_ROOT_PASSWORD:-}" ] || \
+  die "MYSQL_ROOT_PASSWORD is missing from the environment."
+
+is_valid_cloudflare_token "$CF_DNS_API_TOKEN" || \
+  die "CF_DNS_API_TOKEN contains unsupported characters."
+is_valid_password "$MYSQL_ROOT_PASSWORD" || \
+  die "MYSQL_ROOT_PASSWORD does not meet the documented input rules."
+
 echo "=== Base stack setup ==="
 echo ""
 
@@ -19,19 +29,11 @@ if [ -f "$BASE_DIR/.env" ]; then
   [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
 fi
 
-read -rp "ACME email (for Let's Encrypt notifications): " ACME_EMAIL
+if [ -z "${ACME_EMAIL:-}" ]; then
+  read -rp "ACME email (for Let's Encrypt notifications): " ACME_EMAIL
+fi
 is_valid_email "$ACME_EMAIL" || \
   die "Enter a valid email address with a lowercase domain."
-
-read -rsp "Cloudflare DNS API token: " CF_DNS_API_TOKEN
-echo
-is_valid_cloudflare_token "$CF_DNS_API_TOKEN" || \
-  die "The Cloudflare token contains unsupported characters."
-
-read -rsp "MariaDB root password: " MYSQL_ROOT_PASSWORD
-echo
-is_valid_password "$MYSQL_ROOT_PASSWORD" || \
-  die "The MariaDB password does not meet the documented input rules."
 
 # Verify that the Cloudflare token is active before writing anything
 echo ""
@@ -53,8 +55,6 @@ echo "Token OK."
 echo ""
 
 cat > "$BASE_DIR/.env" <<EOF
-CF_DNS_API_TOKEN=$CF_DNS_API_TOKEN
-MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
 ACME_EMAIL=$ACME_EMAIL
 EOF
 chmod 600 "$BASE_DIR/.env"
@@ -70,4 +70,4 @@ docker compose -f "$BASE_DIR/docker-compose.yml" \
 
 echo ""
 echo "Base stack is ready."
-echo "Run '$REPO_DIR/scripts/new-site.sh' to add your first site."
+echo "Run '$REPO_DIR/scripts/new-site.sh' to add a site."

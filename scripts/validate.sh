@@ -12,10 +12,12 @@ require_command shellcheck
 require_docker_compose
 
 SHELL_SCRIPTS=(
+  "$REPO_DIR/scripts/bws-shell.sh"
   "$REPO_DIR/scripts/bootstrap.sh"
   "$REPO_DIR/scripts/new-site.sh"
   "$REPO_DIR/scripts/backup-site.sh"
   "$REPO_DIR/scripts/install-backup-cron.sh"
+  "$REPO_DIR/scripts/site-compose.sh"
   "$REPO_DIR/scripts/validate.sh"
   "$REPO_DIR/scripts/lib/validation.sh"
 )
@@ -27,8 +29,11 @@ echo "Running ShellCheck..."
 shellcheck -P "$REPO_DIR" "${SHELL_SCRIPTS[@]}"
 
 echo "Checking Docker Compose configuration..."
+CF_DNS_API_TOKEN=validation-placeholder \
+MYSQL_ROOT_PASSWORD=validation-placeholder \
 docker compose --env-file "$REPO_DIR/shared/.env.example" \
   -f "$REPO_DIR/shared/docker-compose.yml" config --quiet
+DB_PASSWORD=validation-placeholder \
 docker compose --env-file "$REPO_DIR/templates/site/.env.example" \
   -f "$REPO_DIR/templates/site/docker-compose.yml" config --quiet
 docker compose --env-file "$REPO_DIR/local/.env.example" \

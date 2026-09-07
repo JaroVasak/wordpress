@@ -23,15 +23,18 @@ MARIADB_RUNNING=$(docker inspect --format '{{.State.Running}}' mariadb 2>/dev/nu
 [[ "$MARIADB_RUNNING" == "true" ]] || \
   die "MariaDB is not running. Run $REPO_DIR/scripts/bootstrap.sh first."
 
-MYSQL_ROOT_PASSWORD=$(sed -n 's/^MYSQL_ROOT_PASSWORD=//p' "$BASE_ENV" | tail -n 1)
-[ -n "$MYSQL_ROOT_PASSWORD" ] || \
-  die "MYSQL_ROOT_PASSWORD is missing from shared/.env."
+mariadb_scalar() {
+  docker exec mariadb sh -eu -c '
+    password=$(cat /run/secrets/mariadb_root_password)
+    exec mariadb --batch --skip-column-names \
+      -uroot -p"$password" -e "$1"
+  ' sh "$1"
+}
 
 echo "Waiting for MariaDB to be ready..."
 MARIADB_READY=false
 for ((attempt = 1; attempt <= 60; attempt++)); do
-  if docker exec mariadb mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" \
-    -e "SELECT 1" &>/dev/null; then
+  if mariadb_scalar "SELECT 1" &>/dev/null; then
     MARIADB_READY=true
     break
   fi
@@ -45,27 +48,40 @@ fi
 echo " ready."
 echo ""
 
-# ── prompts ──────────────────────────────────────────────────────────────────
-read -rp "Site name slug (e.g. example-com): " SITE_NAME
+# ── inputs ───────────────────────────────────────────────────────────────────
+if [ -z "${SITE_NAME:-}" ]; then
+  read -rp "Site name slug (e.g. example-com): " SITE_NAME
+fi
 is_valid_site_name "$SITE_NAME" || \
   die "Use a lowercase slug with letters, digits, and single hyphens."
 
-read -rp "Domain (e.g. example.com): " DOMAIN
+SITE_SECRET_PREFIX=${SITE_NAME^^}
+SITE_SECRET_PREFIX=${SITE_SECRET_PREFIX//-/_}
+DB_PASSWORD_SECRET="${SITE_SECRET_PREFIX}_DB_PASSWORD"
+DB_PASSWORD=${!DB_PASSWORD_SECRET:-}
+[ -n "$DB_PASSWORD" ] || \
+  die "$DB_PASSWORD_SECRET is missing from the environment."
+is_valid_password "$DB_PASSWORD" || \
+  die "$DB_PASSWORD_SECRET does not meet the documented input rules."
+export DB_PASSWORD
+
+if [ -z "${DOMAIN:-}" ]; then
+  read -rp "Domain (e.g. example.com): " DOMAIN
+fi
 is_valid_domain "$DOMAIN" || \
   die "Enter a valid lowercase domain name."
 
-read -rp "DB name (e.g. example_com): " DB_NAME
+if [ -z "${DB_NAME:-}" ]; then
+  read -rp "DB name (e.g. example_com): " DB_NAME
+fi
 is_valid_db_name "$DB_NAME" || \
   die "Use at most 64 letters, digits, or underscores for the DB name."
 
-read -rp "DB user (e.g. example_com_user): " DB_USER
+if [ -z "${DB_USER:-}" ]; then
+  read -rp "DB user (e.g. example_com_user): " DB_USER
+fi
 is_valid_db_user "$DB_USER" || \
   die "Use at most 32 letters, digits, or underscores for the DB user."
-
-read -rsp "DB password: " DB_PASSWORD
-echo
-is_valid_password "$DB_PASSWORD" || \
-  die "The database password does not meet the documented input rules."
 
 SITE_DIR="$REPO_DIR/sites/$SITE_NAME"
 COMPOSE_PROJECT_NAME="$SITE_NAME"
@@ -91,11 +107,6 @@ if docker network inspect "$SITE_NETWORK" &>/dev/null; then
   die "Docker network already exists: $SITE_NETWORK"
 fi
 
-mariadb_scalar() {
-  docker exec mariadb mariadb --batch --skip-column-names \
-    -uroot -p"$MYSQL_ROOT_PASSWORD" -e "$1"
-}
-
 if ! DATABASE_EXISTS=$(mariadb_scalar \
   "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$DB_NAME';"); then
   die "Could not check whether database $DB_NAME exists."
@@ -109,7 +120,6 @@ fi
 [[ "$DB_USER_EXISTS" == "0" ]] || die "Database user already exists: $DB_USER"
 
 # ── generate secrets ──────────────────────────────────────────────────────────
-wp_key() { openssl rand -hex 32; }
 TABLE_PREFIX="wp$(openssl rand -hex 3)_"
 
 # ── rollback ──────────────────────────────────────────────────────────────────
@@ -179,16 +189,7 @@ SITE_NAME=$SITE_NAME
 DOMAIN=$DOMAIN
 DB_NAME=$DB_NAME
 DB_USER=$DB_USER
-DB_PASSWORD=$DB_PASSWORD
 WORDPRESS_TABLE_PREFIX=$TABLE_PREFIX
-WORDPRESS_AUTH_KEY=$(wp_key)
-WORDPRESS_SECURE_AUTH_KEY=$(wp_key)
-WORDPRESS_LOGGED_IN_KEY=$(wp_key)
-WORDPRESS_NONCE_KEY=$(wp_key)
-WORDPRESS_AUTH_SALT=$(wp_key)
-WORDPRESS_SECURE_AUTH_SALT=$(wp_key)
-WORDPRESS_LOGGED_IN_SALT=$(wp_key)
-WORDPRESS_NONCE_SALT=$(wp_key)
 EOF
 chmod 600 "$SITE_DIR/.env"
 

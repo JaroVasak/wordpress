@@ -9,6 +9,12 @@ networks:
   socket-proxy:
     internal: true
 
+secrets:
+  cloudflare_dns_api_token:
+    environment: CF_DNS_API_TOKEN
+  mariadb_root_password:
+    environment: MYSQL_ROOT_PASSWORD
+
 x-logging: &default-logging
   driver: json-file
   options:
@@ -72,7 +78,9 @@ services:
     volumes:
       - ./traefik/acme.json:/acme.json
     environment:
-      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN:?CF_DNS_API_TOKEN is required}
+      - CF_DNS_API_TOKEN_FILE=/run/secrets/cloudflare_dns_api_token
+    secrets:
+      - cloudflare_dns_api_token
     networks:
       - proxy
       - socket-proxy
@@ -93,7 +101,9 @@ services:
     volumes:
       - ./mariadb/data:/var/lib/mysql
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?required}
+      - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb_root_password
+    secrets:
+      - mariadb_root_password
     networks:
       - db
     healthcheck:
