@@ -83,12 +83,15 @@ fi
 is_valid_db_user "$DB_USER" || \
   die "Use at most 32 letters, digits, or underscores for the DB user."
 
-SITE_DIR="$REPO_DIR/sites/$SITE_NAME"
+SITES_DIR="$REPO_DIR/sites"
+mkdir -p -- "$SITES_DIR" || die "Could not create sites directory: $SITES_DIR"
+
+SITE_DIR="$SITES_DIR/$SITE_NAME"
 COMPOSE_PROJECT_NAME="$SITE_NAME"
 SITE_VOLUME="${COMPOSE_PROJECT_NAME}_wordpress_files"
 SITE_NETWORK="${COMPOSE_PROJECT_NAME}_internal"
 
-if [ -d "$SITE_DIR" ]; then
+if [ -e "$SITE_DIR" ]; then
   die "$SITE_DIR already exists."
 fi
 
@@ -131,7 +134,7 @@ STACK_START_ATTEMPTED=false
 rollback_provisioning() {
   local exit_code=$?
   local cleanup_failed=false
-  local expected_site_prefix="$REPO_DIR/sites/"
+  local expected_site_prefix="$SITES_DIR/"
 
   (( exit_code != 0 )) || return 0
   trap - EXIT
@@ -165,6 +168,8 @@ rollback_provisioning() {
   if [[ "$SITE_DIR_CREATED" == "true" ]]; then
     if [[ "$cleanup_failed" == "true" ]]; then
       echo "Warning: Preserved $SITE_DIR for manual recovery." >&2
+    elif [[ ! -e "$SITE_DIR" ]]; then
+      :
     elif [[ "$SITE_DIR" == "$expected_site_prefix"* && \
       "$SITE_DIR" != "$TEMPLATE_DIR" && -d "$SITE_DIR" ]]; then
       rm -rf -- "$SITE_DIR"
@@ -180,7 +185,8 @@ trap rollback_provisioning EXIT
 
 # ── copy template ─────────────────────────────────────────────────────────────
 SITE_DIR_CREATED=true
-cp -r "$TEMPLATE_DIR" "$SITE_DIR"
+mkdir -- "$SITE_DIR"
+cp -a -- "$TEMPLATE_DIR/." "$SITE_DIR/"
 mkdir -p "$SITE_DIR/wp-content"
 
 # ── write site .env ───────────────────────────────────────────────────────────
