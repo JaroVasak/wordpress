@@ -28,6 +28,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install cloud-init validators
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes cloud-init yamllint
+
       - name: Run validation
         run: ./scripts/validate.sh
 

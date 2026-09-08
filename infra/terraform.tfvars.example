@@ -4,6 +4,9 @@ server_image = "ubuntu-24.04"
 location     = "nbg1"
 ssh_key_name = "hetzner-wordpress"
 
+repository_url = "https://github.com/JaroVasak/wordpress.git"
+repository_ref = "main"
+
 # Replace this documentation-only address with your current public IP in CIDR form.
 ssh_allowed_cidrs = [
   "203.0.113.10/32",

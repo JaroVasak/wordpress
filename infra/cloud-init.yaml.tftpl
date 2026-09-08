@@ -1,0 +1,110 @@
+#cloud-config
+---
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - cron
+  - curl
+  - git
+  - gzip
+  - openssl
+  - shellcheck
+  - unzip
+
+write_files:
+  - path: /usr/local/sbin/wordpress-host-setup
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      if (( $# != 5 )); then
+        echo "Host setup received an invalid number of inputs." >&2
+        exit 1
+      fi
+      bws_version=$1
+      bws_checksum_aarch64=$2
+      bws_checksum_x86_64=$3
+      repository_url_base64=$4
+      repository_ref_base64=$5
+
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+        -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+
+      # shellcheck disable=SC1091
+      . /etc/os-release
+      docker_arch=$(dpkg --print-architecture)
+      printf '%s\n' \
+        'Types: deb' \
+        'URIs: https://download.docker.com/linux/ubuntu' \
+        "Suites: $VERSION_CODENAME" \
+        'Components: stable' \
+        "Architectures: $docker_arch" \
+        'Signed-By: /etc/apt/keyrings/docker.asc' \
+        > /etc/apt/sources.list.d/docker.sources
+
+      apt-get update
+      DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        containerd.io \
+        docker-buildx-plugin \
+        docker-ce \
+        docker-ce-cli \
+        docker-compose-plugin
+      systemctl enable --now cron docker
+
+      case "$(uname -m)" in
+        aarch64|arm64)
+          bws_arch=aarch64
+          bws_checksum=$bws_checksum_aarch64
+          ;;
+        x86_64|amd64)
+          bws_arch=x86_64
+          bws_checksum=$bws_checksum_x86_64
+          ;;
+        *)
+          echo "Unsupported CPU architecture: $(uname -m)" >&2
+          exit 1
+          ;;
+      esac
+
+      bws_archive="bws-$bws_arch-unknown-linux-gnu-$bws_version.zip"
+      temp_dir=$(mktemp -d)
+      trap 'rm -rf -- "$temp_dir"' EXIT
+      curl -fsSL \
+        "https://github.com/bitwarden/sdk/releases/download/bws-v$bws_version/$bws_archive" \
+        -o "$temp_dir/$bws_archive"
+      printf '%s  %s\n' "$bws_checksum" "$temp_dir/$bws_archive" | \
+        sha256sum --check --status
+      unzip -q "$temp_dir/$bws_archive" -d "$temp_dir/bws"
+      install -m 0755 "$temp_dir/bws/bws" /usr/local/bin/bws
+      rm -rf -- "$temp_dir"
+      trap - EXIT
+
+      repository_url=$(printf '%s' "$repository_url_base64" | base64 --decode)
+      repository_ref=$(printf '%s' "$repository_ref_base64" | base64 --decode)
+      if [ -e /opt/wordpress ]; then
+        echo "/opt/wordpress already exists; refusing to overwrite it." >&2
+        exit 1
+      fi
+      git clone --branch "$repository_ref" --single-branch \
+        "$repository_url" /opt/wordpress
+
+      docker version
+      docker compose version
+      bws --version
+
+runcmd:
+  - - /usr/local/sbin/wordpress-host-setup
+    - "${bws_version}"
+    - "${bws_checksum_aarch64}"
+    - "${bws_checksum_x86_64}"
+    - "${repository_url_base64}"
+    - "${repository_ref_base64}"
+
+final_message: WordPress host preparation finished after $UPTIME seconds.

@@ -59,8 +59,10 @@ Persistent data is stored in these locations:
 ## Hetzner infrastructure
 
 Terraform configuration under `infra/` creates one Hetzner Cloud server and an
-attached firewall. It uses an existing SSH key from the selected Hetzner Cloud
-project. Cloudflare resources are not managed by this configuration.
+attached firewall. Cloud-init prepares Ubuntu, installs Docker and the runtime
+tools, and clones this repository into `/opt/wordpress`. Terraform uses an
+existing SSH key from the selected Hetzner Cloud project. Cloudflare resources
+are not managed by this configuration.
 
 The configuration requires Terraform 1.16.1 and reads the Hetzner API token
 from the `HCLOUD_TOKEN` environment variable. The token is never stored in a
@@ -76,7 +78,8 @@ cp terraform.tfvars.example terraform.tfvars
 Set `ssh_key_name` to a key already uploaded to the Hetzner project. Replace
 the documentation address in `ssh_allowed_cidrs` with your current public IP
 using `/32` for IPv4 or `/128` for IPv6. SSH access from the whole internet is
-rejected by input validation.
+rejected by input validation. Change `repository_url` if you use a fork, and
+set `repository_ref` to the branch or tag that the server must clone.
 
 Review the infrastructure before creating resources:
 
@@ -99,6 +102,26 @@ terraform apply
 The server IPv4 and IPv6 addresses are Terraform outputs. Add the required DNS
 records to the existing Cloudflare zone, then continue with the base stack
 setup below.
+
+Cloud-init runs during the first server boot. Wait for it before you run the
+application scripts:
+
+```bash
+ssh root@SERVER_IPV4
+cloud-init status --wait
+cd /opt/wordpress
+./scripts/bws-shell.sh
+```
+
+The host setup installs CA certificates, cron, curl, Git, gzip, OpenSSL,
+ShellCheck, unzip, Docker Engine, the Docker Compose plugin, and the Bitwarden
+Secrets Manager CLI. The `bws` version and its official Linux checksums are
+pinned in `infra/server.tf`. No access token or application secret is included
+in cloud-init or Terraform state.
+
+Cloud-init is a first-boot installer. A later change to the cloud-init template
+does not update an existing server. Review the Terraform plan carefully because
+a `user_data` change can require server replacement.
 
 Server deletion and rebuild protection are enabled by default. To destroy the
 PoC later, set `enable_server_protection = false`, apply that change, and only
@@ -338,9 +361,10 @@ Run all application-stack checks before provisioning or committing changes:
 ./scripts/validate.sh
 ```
 
-The command checks Bash syntax, runs ShellCheck, renders every Compose file,
-tests both Nginx configurations in the pinned Nginx image, and checks the Git
-diff for whitespace errors. It does not start the WordPress stacks.
+The command checks Bash syntax, runs ShellCheck, validates the cloud-init YAML,
+renders every Compose file, tests both Nginx configurations in the pinned Nginx
+image, and checks the Git diff for whitespace errors. It does not start the
+WordPress stacks.
 
 GitHub Actions runs the same command for pull requests, pushes to `main`, and
 manual workflow runs. It also checks Terraform formatting and validates the

@@ -6,9 +6,11 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$REPO_DIR/scripts/lib/validation.sh"
 
 require_command bash
+require_command cloud-init
 require_command docker
 require_command git
 require_command shellcheck
+require_command yamllint
 require_docker_compose
 
 SHELL_SCRIPTS=(
@@ -27,6 +29,17 @@ bash -n "${SHELL_SCRIPTS[@]}"
 
 echo "Running ShellCheck..."
 shellcheck -P "$REPO_DIR" "${SHELL_SCRIPTS[@]}"
+
+echo "Checking cloud-init configuration..."
+cloud-init schema --config-file "$REPO_DIR/infra/cloud-init.yaml.tftpl"
+awk '
+  /^    content: \|$/ { inside = 1; next }
+  /^runcmd:/ { inside = 0 }
+  inside { sub(/^      /, ""); print }
+' "$REPO_DIR/infra/cloud-init.yaml.tftpl" | shellcheck -s bash -
+yamllint -d \
+  '{extends: default, rules: {comments: disable, line-length: {max: 100}}}' \
+  "$REPO_DIR/infra/cloud-init.yaml.tftpl"
 
 echo "Checking Docker Compose configuration..."
 CF_DNS_API_TOKEN=validation-placeholder \

@@ -45,6 +45,36 @@ variable "location" {
   }
 }
 
+variable "repository_url" {
+  description = "Public GitHub repository cloned onto the server."
+  type        = string
+  default     = "https://github.com/JaroVasak/wordpress.git"
+
+  validation {
+    condition = can(regex(
+      "^https://github[.]com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+([.]git)?$",
+      var.repository_url,
+    ))
+    error_message = "The repository URL must be a public HTTPS GitHub URL."
+  }
+}
+
+variable "repository_ref" {
+  description = "Git branch or tag cloned onto the server."
+  type        = string
+  default     = "main"
+
+  validation {
+    condition = (
+      length(var.repository_ref) <= 255 &&
+      can(regex("^[A-Za-z0-9][A-Za-z0-9._/-]*$", var.repository_ref)) &&
+      !strcontains(var.repository_ref, "..") &&
+      !strcontains(var.repository_ref, "//")
+    )
+    error_message = "The repository ref must be a valid branch or tag name."
+  }
+}
+
 variable "ssh_key_name" {
   description = "Name of an existing SSH key in the Hetzner Cloud project."
   type        = string
