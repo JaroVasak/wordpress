@@ -13,6 +13,9 @@ Traefik listens on ports 80 and 443. Each site has its own Nginx/PHP-FPM
 containers, internal network, database, and database user. Shared Docker
 networks connect site Nginx services to Traefik and PHP-FPM services to MariaDB.
 Traefik discovers site services through a restricted Docker socket proxy.
+The Hetzner firewall accepts web traffic only from Cloudflare's reviewed IP
+ranges. Public website DNS records must be proxied through Cloudflare; see the
+[firewall configuration](infra/README.md#cloudflare-only-web-access).
 
 Persistent data lives in `shared/mariadb/data/`, `shared/traefik/acme.json`,
 `sites/<site>/wp-content/`, and each site's `wordpress_files` Docker volume.

@@ -24,6 +24,11 @@ output "server_status" {
 }
 
 output "firewall_id" {
-  description = "Hetzner Cloud firewall ID attached to the server."
+  description = "Terraform-managed web firewall ID attached to the server."
   value       = hcloud_firewall.wordpress.id
+}
+
+output "ssh_firewall_id" {
+  description = "Firewall whose SSH rules are managed in the Hetzner GUI."
+  value       = hcloud_firewall.ssh.id
 }
