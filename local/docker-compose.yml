@@ -19,7 +19,7 @@ x-logging: &default-logging
 
 services:
   nginx:
-    image: nginx:1.30.6-alpine
+    image: nginx:1.30.6-alpine-slim
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

@@ -60,10 +60,10 @@
       "groupName": "Renovate runtime"
     },
     {
-      "description": "Nginx stable branches have an even minor version; keep the Alpine variant",
+      "description": "Nginx stable branches have an even minor version; keep the Alpine slim variant",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["nginx"],
-      "allowedVersions": "/^\\d+\\.(?:\\d*[02468])\\.\\d+-alpine$/"
+      "allowedVersions": "/^\\d+\\.(?:\\d*[02468])\\.\\d+-alpine-slim$/"
     },
     {
       "description": "Database upgrades remain manual, including patch updates",
