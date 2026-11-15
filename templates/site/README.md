@@ -1,0 +1,56 @@
+# Site Template
+
+[Project overview](../../README.md) · [Site operator commands](../../scripts/README.md#adding-a-new-site)
+
+This directory is copied to `sites/<site-name>/` when a site is provisioned.
+Editing the template affects future sites; existing sites keep their own copies.
+
+## Generated configuration
+
+[.env.example](.env.example) documents the site's configuration fields; do not
+edit or copy it to provision a site. `new-site.sh` reads its inputs from the
+command line or exported environment variables, then generates
+`sites/<site-name>/.env`, including a random WordPress table prefix. It does not
+load a `.env` file as provisioning input. Keep database passwords in your secret
+manager, not in these files.
+
+| Field | Purpose |
+|---|---|
+| `SITE_NAME` | Compose project, container, and router names |
+| `DOMAIN` | Normalized hostname used by Traefik |
+| `DB_NAME` | Site database in the shared MariaDB service |
+| `DB_USER` | Database user restricted to that site |
+| `WORDPRESS_TABLE_PREFIX` | Random table prefix generated during provisioning |
+
+## Persistent data
+
+Each site has a `wordpress_files` Docker volume for WordPress core and its
+generated configuration. Nginx and PHP-FPM share this volume. The host directory
+`sites/<site-name>/wp-content/` stores uploads, plugins, and themes. Nginx mounts
+WordPress content read-only. WordPress disables PHP file editing in the dashboard.
+
+WordPress generates authentication keys in its persistent configuration during
+initialization. Update existing WordPress core through WordPress itself; changing
+the container image does not replace existing core files in the volume.
+
+## PHP settings
+
+[uploads.ini](uploads.ini) sets both `upload_max_filesize` and `post_max_size` to
+64 MB. Per-container CPU/memory limits and PHP worker tuning are not configured
+by this template.
+
+## Nginx request safeguards
+
+The production and local Nginx configurations:
+
+- Reject hidden files, direct `wp-config.php` access, and PHP under upload directories.
+- Reject requests for PHP scripts that do not exist on disk.
+- Add common content-type, clickjacking, and referrer security headers.
+- Compress suitable text responses with a moderate gzip level.
+- Cache static assets for 30 days and omit them from access logs.
+- Hide Nginx and PHP versions from HTTP responses.
+
+Traefik remains responsible for HTTP-to-HTTPS redirects, TLS, and certificate
+management. FastCGI page caching is intentionally not enabled by the generic
+template because authenticated sessions and plugin behavior need site-specific
+cache rules and testing.

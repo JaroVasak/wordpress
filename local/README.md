@@ -1,5 +1,7 @@
 # Isolated Local Test Stack
 
+[Project overview](../README.md)
+
 This directory contains a local-only WordPress stack. It does not read or modify files under `shared/` or `sites/`.
 
 The stack includes:
