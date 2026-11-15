@@ -64,7 +64,7 @@ tools, and clones this repository into `/opt/wordpress`. Terraform uses an
 existing SSH key from the selected Hetzner Cloud project. Cloudflare resources
 are not managed by this configuration.
 
-The configuration requires Terraform 1.16.1 and reads the Hetzner API token
+The configuration requires Terraform 1.17.2 and reads the Hetzner API token
 from the `HCLOUD_TOKEN` environment variable. The token is never stored in a
 Terraform input file.
 
@@ -368,6 +368,11 @@ an image or configuration change:
 ```bash
 ./scripts/site-compose.sh example-com up -d --wait
 ```
+
+Existing sites keep their own copies of the template. Update their image tags
+separately before recreating the containers. Existing WordPress core files are
+persistent and must be updated through WordPress itself. MariaDB remains pinned
+to `12.2.2-noble`; a database version upgrade is outside this update.
 
 Version tags can still be changed in a container registry. Pin image digests as
 well if deployments need immutable image content.

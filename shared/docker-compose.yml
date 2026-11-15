@@ -23,7 +23,7 @@ x-logging: &default-logging
 
 services:
   socket-proxy:
-    image: ghcr.io/linuxserver/socket-proxy:3.4.3-r0-ls93
+    image: ghcr.io/linuxserver/socket-proxy:3.4.7-r0-ls105
     container_name: socket-proxy
     restart: unless-stopped
     read_only: true
@@ -45,7 +45,7 @@ services:
       - socket-proxy
 
   traefik:
-    image: traefik:v3.7.12
+    image: traefik:v3.7.19
     container_name: traefik
     restart: unless-stopped
     security_opt:

@@ -22,7 +22,7 @@ x-logging: &default-logging
 
 services:
   nginx:
-    image: nginx:1.31.4-alpine
+    image: nginx:1.30.6-alpine
     container_name: ${SITE_NAME:?required}-nginx
     restart: unless-stopped
     security_opt:
@@ -52,7 +52,7 @@ services:
       start_period: 20s
 
   wordpress:
-    image: wordpress:7.1-php8.5-fpm
+    image: wordpress:7.1.4-php8.5-fpm
     container_name: ${SITE_NAME:?required}-fpm
     restart: unless-stopped
     security_opt:
