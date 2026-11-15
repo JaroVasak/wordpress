@@ -114,6 +114,26 @@ migration plan. Never use `down --volumes` as an update step.
 Changing the cloud-init template does not update the existing host; see the
 [infrastructure lifecycle notes](../infra/README.md).
 
+## Resource limits
+
+| Container | Memory cap | CPU cap | Process/thread cap |
+|---|---:|---:|---:|
+| MariaDB | 768 MiB | 1 CPU | 256 |
+| Traefik | 192 MiB | 0.5 CPU | 128 |
+| Socket proxy | 64 MiB | 0.25 CPU | 64 |
+
+Caps are ceilings, not reservations. CPU caps may add up to more than the host's
+two vCPUs; containers share available processing time. MariaDB's cap includes its
+buffer pool, connections, and other allocations. Keep its tuning within this
+budget and check memory peaks during backups and maintenance. Shared-service
+failures can affect every site.
+
+Shared-service memory caps total 1 GiB. Each
+[site stack](../templates/site/README.md#resource-limits) adds 800 MiB to the
+combined ceilings. Depending on the number of sites, these may overcommit
+physical RAM. Monitor host available memory and OOM events, and reassess capacity
+when adding sites; increasing caps does not add physical RAM.
+
 ## Docker discovery
 
 Traefik reads Docker metadata through the restricted socket proxy. Only site

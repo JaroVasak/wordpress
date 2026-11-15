@@ -25,6 +25,9 @@ services:
     image: nginx:1.30.6-alpine-slim
     container_name: ${SITE_NAME:?required}-nginx
     restart: unless-stopped
+    mem_limit: 32m
+    cpus: "0.25"
+    pids_limit: 64
     security_opt:
       - no-new-privileges:true
     logging: *default-logging
@@ -55,6 +58,9 @@ services:
     image: wordpress:7.1.4-php8.5-fpm-alpine
     container_name: ${SITE_NAME:?required}-fpm
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: "0.75"
+    pids_limit: 128
     security_opt:
       - no-new-privileges:true
     logging: *default-logging
@@ -62,6 +68,7 @@ services:
       - wordpress_files:/var/www/html
       - ./wp-content:/var/www/html/wp-content
       - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+      - ./php-fpm.conf:/usr/local/etc/php-fpm.d/zz-site.conf:ro
     environment:
       - WORDPRESS_DB_HOST=mariadb
       - WORDPRESS_DB_NAME=${DB_NAME:?required}

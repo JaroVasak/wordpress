@@ -29,6 +29,13 @@ Open `http://localhost:8080` and complete the WordPress installer.
 
 Change `LOCAL_PORT` in `local/.env` if port 8080 is already in use.
 
+## Resource limits
+
+The local stack uses the same per-container resource limits and PHP worker
+settings as the production templates: WordPress 768 MiB / 0.75 CPU, Nginx
+32 MiB / 0.25 CPU, and MariaDB 768 MiB / 1 CPU. PHP starts up to two workers on
+demand. See the [site resource limits](../templates/site/README.md#resource-limits).
+
 ## Logs
 
 ```bash

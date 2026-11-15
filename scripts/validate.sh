@@ -69,6 +69,18 @@ docker run --rm --add-host wordpress:127.0.0.1 \
   --volume "$REPO_DIR/local/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
   --entrypoint nginx "$NGINX_IMAGE" -t
 
+for config_dir in templates/site local; do
+  WORDPRESS_IMAGE=$(DB_PASSWORD=validation-placeholder docker compose \
+    --env-file "$REPO_DIR/$config_dir/.env.example" \
+    -f "$REPO_DIR/$config_dir/docker-compose.yml" \
+    config --images | sed -n '/^wordpress:/p' | head -n 1)
+  [ -n "$WORDPRESS_IMAGE" ] || die "Could not determine the $config_dir WordPress image."
+  echo "Checking $config_dir PHP-FPM configuration..."
+  docker run --rm --network none \
+    --volume "$REPO_DIR/$config_dir/php-fpm.conf:/usr/local/etc/php-fpm.d/zz-site.conf:ro" \
+    --entrypoint php-fpm "$WORDPRESS_IMAGE" -t
+done
+
 echo "Checking Git whitespace..."
 git -C "$REPO_DIR" diff HEAD --check
 
