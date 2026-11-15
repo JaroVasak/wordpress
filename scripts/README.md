@@ -186,8 +186,8 @@ an image or configuration change:
 
 Existing sites keep their own copies of the template. Update their image tags
 separately before recreating the containers. Existing WordPress core files are
-persistent and must be updated through WordPress itself. MariaDB remains pinned
-to `12.2.2-noble`; a database version upgrade is outside this update.
+persistent and must be updated through WordPress itself. MariaDB is pinned to
+`12.3.3-noble` LTS; version changes require a separate database upgrade plan.
 
 Version tags can still be changed in a container registry. Pin image digests as
 well if deployments need immutable image content.

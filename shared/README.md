@@ -108,8 +108,11 @@ proxy. The proxy does not publish a host port.
 Review image changes in [docker-compose.yml](docker-compose.yml), back up data,
 and test before recreating shared services. Load the existing Cloudflare and
 MariaDB root secrets, then run `./scripts/bootstrap.sh` from the repository root.
-MariaDB remains pinned to `12.2.2-noble`; database upgrades require a separate
-migration plan. Never use `down --volumes` as an update step.
+MariaDB is pinned to `12.3.3-noble` on the LTS release series; database upgrades
+require a tested backup and rollback plan. `MARIADB_AUTO_UPGRADE=1` lets the
+official entrypoint run required system-table upgrades before serving requests.
+Its automatic system-table backup does not replace a full database backup.
+Never use `down --volumes` as an update step.
 
 Changing the cloud-init template does not update the existing host; see the
 [infrastructure lifecycle notes](../infra/README.md).
