@@ -20,7 +20,7 @@ concurrency:
 jobs:
   repository:
     name: Repository security scan
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
 
     steps:
@@ -59,7 +59,7 @@ jobs:
     name: Security checks
     if: ${{ always() }}
     needs: [repository, images, containers]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
 
     steps:
@@ -78,7 +78,7 @@ jobs:
 
   images:
     name: Discover configured container images
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.images.outputs.matrix }}
@@ -112,7 +112,7 @@ jobs:
   containers:
     name: Container security scan (${{ matrix.image }})
     needs: images
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     strategy:
       fail-fast: false

@@ -18,7 +18,7 @@ concurrency:
 jobs:
   automation:
     name: Workflow and dependency configuration checks
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     env:
       # renovate: datasource=docker depName=rhysd/actionlint
@@ -48,7 +48,7 @@ jobs:
 
   repository:
     name: Repository checks
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
 
     steps:
