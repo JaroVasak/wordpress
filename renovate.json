@@ -3,6 +3,11 @@
   "extends": ["config:recommended", ":semanticCommits", "helpers:pinGitHubActionDigests"],
   "timezone": "Europe/Prague",
   "automerge": false,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformAutomerge": true,
+  "separateMajorMinor": true,
+  "dependencyDashboardApproval": false,
   "ignoreUnstable": true,
   "dependencyDashboard": {"enabled": true},
   "prConcurrentLimit": 5,
@@ -20,6 +25,26 @@
   ],
   "packageRules": [
     {
+      "description": "Automerge only patch/minor updates and pin maintenance for explicitly selected CI tools",
+      "matchManagers": ["github-actions", "custom.regex"],
+      "matchPackageNames": [
+        "actions/*",
+        "hashicorp/setup-terraform",
+        "renovatebot/github-action",
+        "aquasecurity/trivy-action",
+        "aquasecurity/trivy",
+        "ghcr.io/renovatebot/renovate",
+        "rhysd/actionlint"
+      ],
+      "matchUpdateTypes": ["patch", "minor", "digest", "pin", "pinDigest"],
+      "automerge": true
+    },
+    {
+      "description": "Major updates always require a manual merge",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
       "description": "Keep every copy of each container image in the same PR",
       "matchManagers": ["docker-compose"],
       "groupName": "{{depName}} container images"
@@ -33,11 +58,6 @@
       "description": "Update the Renovate runner and config validator together",
       "matchPackageNames": ["ghcr.io/renovatebot/renovate"],
       "groupName": "Renovate runtime"
-    },
-    {
-      "description": "Require dashboard approval before creating major-version PRs",
-      "matchUpdateTypes": ["major"],
-      "dependencyDashboardApproval": true
     },
     {
       "description": "Nginx stable branches have an even minor version; keep the Alpine variant",
