@@ -33,6 +33,17 @@ WordPress generates authentication keys in its persistent configuration during
 initialization. Update existing WordPress core through WordPress itself; changing
 the container image does not replace existing core files in the volume.
 
+## WordPress runtime
+
+The template and local stack use the official
+`wordpress:7.1.4-php8.5-fpm-alpine` image. It keeps the WordPress and PHP release
+lines while using Alpine instead of Debian. Renovate's Docker versioning keeps
+the `php8.5-fpm-alpine` compatibility suffix when proposing WordPress updates.
+
+Alpine uses musl instead of glibc. WordPress runs as `www-data` with UID/GID 82,
+which owns its writable core files and `wp-content` data. Bundled native
+binaries and custom PHP extensions must be compatible with Alpine.
+
 ## PHP settings
 
 [uploads.ini](uploads.ini) sets both `upload_max_filesize` and `post_max_size` to
