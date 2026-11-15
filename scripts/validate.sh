@@ -22,6 +22,8 @@ SHELL_SCRIPTS=(
   "$REPO_DIR/scripts/site-compose.sh"
   "$REPO_DIR/scripts/validate.sh"
   "$REPO_DIR/scripts/lib/validation.sh"
+  "$REPO_DIR/.github/security/select-reviewed-findings.sh"
+  "$REPO_DIR/.github/security/test-reviewed-findings.sh"
 )
 
 echo "Checking Bash syntax..."
@@ -29,6 +31,9 @@ bash -n "${SHELL_SCRIPTS[@]}"
 
 echo "Running ShellCheck..."
 shellcheck -P "$REPO_DIR" "${SHELL_SCRIPTS[@]}"
+
+echo "Checking reviewed security-finding scope..."
+bash "$REPO_DIR/.github/security/test-reviewed-findings.sh"
 
 echo "Checking cloud-init configuration..."
 cloud-init schema --config-file "$REPO_DIR/infra/cloud-init.yaml.tftpl"

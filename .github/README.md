@@ -70,15 +70,19 @@ Container scanning produces two reports for each image:
   alone do not fail this collection step.
 - **Fixable vulnerability gate:** only HIGH/CRITICAL vulnerabilities with a
   published fix, in `trivy-image-fixable.json` and `trivy-image-fixable.txt`.
-  These findings fail the image job and the combined `Security checks` result.
+  Unreviewed findings fail the image job and the combined `Security checks` result.
 
 Each image job publishes a severity/count table on the workflow summary page.
 Both reports are retained in its `security-image-*` artifact for 14 days, even
 when the gate fails. The scans must refer to the same image ID. Scanner,
 registry/network, report-generation, and image-ID mismatch errors still fail
-the job; these errors are not treated as clean scans. No findings are suppressed
-through an ignore list. The full report retains lower-severity and unfixed
-findings for review.
+the job; these errors are not treated as clean scans. The full report retains
+lower-severity, unfixed, and reviewed non-applicable findings for review.
+
+The blocking scan supports [reviewed helper exclusions](security/README.md). They
+apply only to an explicitly listed image, verified helper SHA-256, path, CVE IDs,
+and review period. New findings and changed helpers remain subject to the full
+gate. The summary displays reviewed exclusions separately from unfixed findings.
 
 The repository scan is unchanged: HIGH/CRITICAL dependency, infrastructure, or
 secret findings fail that job. Scans inspect checked-out files and registry
@@ -98,9 +102,12 @@ especially when Renovate uses the owner's PAT. Major/application updates are
 manual because Renovate does not enable automerge for them; the policy does not
 enforce a separate reviewer for those PRs.
 
-Security scans remain advisory while their existing findings are addressed;
-`Security checks` is not a required status check yet. The fixed job still reports
-failure if any scan fails. Make it required once the security baseline is ready.
+The combined `Security checks` status is not required yet. After the reviewed
+policy is merged and the workflow passes on `main`, add `Security checks` to
+the existing required checks in Settings → Branches → the protection rule for
+`main`. Keep both existing validation checks required, branches up to date, and
+select GitHub Actions as the expected check source. The combined job reports
+failure when any scan fails or is skipped.
 GitHub's native auto-merge waits for the required validation checks; non-required
 security findings do not block eligible CI-tool merges.
 

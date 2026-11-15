@@ -1,0 +1,108 @@
+---
+# Limited to the reviewed image/helper SHA-256 by security.yml.
+# Evidence and reproduction: README.md and mariadb-gosu-review.json.
+vulnerabilities:
+  - id: CVE-2025-61726
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4341).
+  - id: CVE-2025-61729
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2025-4155).
+  - id: CVE-2025-68121
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4337).
+  - id: CVE-2026-111943
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-6809).
+  - id: CVE-2026-25679
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4601).
+  - id: CVE-2026-27145
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-5037).
+  - id: CVE-2026-32280
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4947).
+  - id: CVE-2026-32281
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4946).
+  - id: CVE-2026-32283
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4870).
+  - id: CVE-2026-33811
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4981).
+  - id: CVE-2026-33814
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4918).
+  - id: CVE-2026-33818
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-5972).
+  - id: CVE-2026-39820
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4986).
+  - id: CVE-2026-39821
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-5026).
+  - id: CVE-2026-39822
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4970).
+  - id: CVE-2026-39836
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4971).
+  - id: CVE-2026-42499
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-4977).
+  - id: CVE-2026-42504
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-5038).
+  - id: CVE-2026-56853
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-6089).
+  - id: CVE-2026-56858
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-6091).
+  - id: CVE-2026-56859
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-6088).
+  - id: CVE-2026-56860
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-6218).
+  - id: CVE-2026-56862
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-6090).
+  - id: CVE-2026-78667
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-6609).
+  - id: CVE-2026-78669
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-6611).
+  - id: CVE-2026-97031
+    paths: [usr/local/bin/gosu]
+    expired_at: 2027-02-13
+    statement: Vulnerable functions absent; see mariadb-gosu-review.json (GO-2026-6607).
