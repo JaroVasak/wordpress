@@ -121,7 +121,8 @@ jobs:
         image: ${{ fromJSON(needs.images.outputs.matrix) }}
 
     steps:
-      - name: Scan container packages for known vulnerabilities
+      - name: Collect all container vulnerabilities (advisory)
+        id: inventory
         # aquasecurity/trivy-action v0.36.0
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -129,12 +130,71 @@ jobs:
           scan-type: image
           image-ref: ${{ matrix.image }}
           scanners: vuln
-          severity: HIGH,CRITICAL
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
           ignore-unfixed: 'false'
+          exit-code: '0'
+          timeout: 10m
+          format: json
+          output: trivy-image-all.json
+
+      - name: Check fixable HIGH and CRITICAL container vulnerabilities
+        # aquasecurity/trivy-action v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: v0.76.2
+          skip-setup-trivy: 'true'
+          scan-type: image
+          image-ref: ${{ matrix.image }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: 'true'
           exit-code: '1'
           timeout: 10m
-          format: table
-          output: trivy-image.txt
+          format: json
+          output: trivy-image-fixable.json
+
+      - name: Publish full and fixable vulnerability summaries
+        if: ${{ !cancelled() && steps.inventory.outcome == 'success' }}
+        env:
+          IMAGE_REF: ${{ matrix.image }}
+        run: |
+          trivy convert --scanners vuln --format table --exit-code 0 \
+            --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+            --output trivy-image-all.txt trivy-image-all.json
+          if [ ! -s trivy-image-fixable.json ]; then
+            echo '::error::The fixable vulnerability scan did not produce a report.'
+            exit 1
+          fi
+          if ! jq -e --slurpfile fixable trivy-image-fixable.json \
+            '.ArtifactID != null and .ArtifactID == $fixable[0].ArtifactID' \
+            trivy-image-all.json > /dev/null; then
+            echo '::error::Image IDs differ or a vulnerability report is invalid. Retry the scans.'
+            exit 1
+          fi
+          trivy convert --scanners vuln --format table --exit-code 0 \
+            --severity HIGH,CRITICAL \
+            --output trivy-image-fixable.txt trivy-image-fixable.json
+          {
+            printf '### Container vulnerabilities: `%s`\n\n' "$IMAGE_REF"
+            jq -r --slurpfile fixable trivy-image-fixable.json '
+              def findings: [.Results[]?.Vulnerabilities[]?];
+              findings as $all | ($fixable[0] | findings) as $fixed |
+              "| Severity | All findings | Fix available (gate) | No fix (advisory) |",
+              "|---|---:|---:|---:|",
+              (["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"][] as $severity |
+                ($all | map(select(.Severity == $severity)) | length) as $total |
+                (if ($severity == "HIGH" or $severity == "CRITICAL") then
+                  ($fixed | map(select(.Severity == $severity)) | length)
+                else null end) as $count |
+                if $count == null then
+                  "| \($severity) | \($total) | — | Advisory only |"
+                else
+                  "| \($severity) | \($total) | \($count) | \($total - $count) |"
+                end)
+            ' trivy-image-all.json
+            printf '\nFull and fixable reports are in the security-image artifact for this job.\n'
+            printf 'Only fixable HIGH/CRITICAL findings fail the image policy check.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save container report
         if: ${{ !cancelled() }}
@@ -142,6 +202,10 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: security-image-${{ strategy.job-index }}
-          path: trivy-image.txt
+          path: |
+            trivy-image-all.json
+            trivy-image-all.txt
+            trivy-image-fixable.json
+            trivy-image-fixable.txt
           if-no-files-found: warn
           retention-days: 14
