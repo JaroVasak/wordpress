@@ -98,7 +98,7 @@ services:
       start_period: 10s
 
   mariadb:
-    image: mariadb:12.2.2-noble
+    image: mariadb:12.3.3-noble
     container_name: mariadb
     restart: unless-stopped
     mem_limit: 768m
@@ -111,6 +111,7 @@ services:
       - ./mariadb/data:/var/lib/mysql
     environment:
       - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb_root_password
+      - MARIADB_AUTO_UPGRADE=1
     secrets:
       - mariadb_root_password
     networks:
