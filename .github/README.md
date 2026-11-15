@@ -63,12 +63,27 @@ managed by the host's APT update policy.
    appear under each job and as downloadable artifacts, retained for 14 days.
    No extra token or code-scanning subscription is needed for this workflow.
 
-Security jobs fail on HIGH/CRITICAL findings, including vulnerabilities without
-a published fix. Scanner/network errors also fail the job; inspect the logs to
-distinguish them. Expect existing dependencies or infrastructure settings to
-produce findings: review and fix them rather than assuming the first scan will
-be green. No findings are suppressed by default. Scans inspect the checked-out
-files and registry images, not the running server or installed WordPress plugins.
+Container scanning produces two reports for each image:
+
+- **Full advisory report:** all severities, including vulnerabilities without a
+  published fix, in `trivy-image-all.json` and `trivy-image-all.txt`. Findings
+  alone do not fail this collection step.
+- **Fixable vulnerability gate:** only HIGH/CRITICAL vulnerabilities with a
+  published fix, in `trivy-image-fixable.json` and `trivy-image-fixable.txt`.
+  These findings fail the image job and the combined `Security checks` result.
+
+Each image job publishes a severity/count table on the workflow summary page.
+Both reports are retained in its `security-image-*` artifact for 14 days, even
+when the gate fails. The scans must refer to the same image ID. Scanner,
+registry/network, report-generation, and image-ID mismatch errors still fail
+the job; these errors are not treated as clean scans. No findings are suppressed
+through an ignore list. The full report retains lower-severity and unfixed
+findings for review.
+
+The repository scan is unchanged: HIGH/CRITICAL dependency, infrastructure, or
+secret findings fail that job. Scans inspect checked-out files and registry
+images, not the running server or installed WordPress plugins. Existing fixable
+findings may keep `Security checks` red until the affected images are remediated.
 
 Protect `main` with a branch protection rule requiring pull requests and these
 GitHub Actions checks, with branches up to date before merging:
