@@ -33,8 +33,9 @@ Update pull requests use conventional commits. Patch, minor, and major update
 PRs are created automatically, subject to the configured rate limits; no
 Dependency Dashboard approval is needed. Review and merge the PR itself:
 only selected CI-tool patch/minor updates and pin maintenance can merge
-automatically after required checks pass. Major updates, application container
-updates, Terraform CLI/provider updates, and runner OS updates require a manual
+automatically after required checks pass, using rebase merging to preserve the
+PR's individual commits. Major updates, application container updates,
+Terraform CLI/provider updates, and runner OS updates require a manual
 merge. CI tools are explicitly listed in `renovate.json`: GitHub Actions,
 Renovate, Trivy, and actionlint. Stable releases are preferred and Nginx is
 restricted to its stable (even minor) branches. MariaDB updates are
