@@ -176,6 +176,8 @@ jobs:
             --output trivy-image-fixable.txt trivy-image-fixable.json
           {
             printf '### Container vulnerabilities: `%s`\n\n' "$IMAGE_REF"
+            # These variables belong to jq, not the shell.
+            # shellcheck disable=SC2016
             jq -r --slurpfile fixable trivy-image-fixable.json '
               def findings: [.Results[]?.Vulnerabilities[]?];
               findings as $all | ($fixable[0] | findings) as $fixed |
