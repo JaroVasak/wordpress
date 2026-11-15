@@ -1,0 +1,55 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", "helpers:pinGitHubActionDigests"],
+  "timezone": "Europe/Prague",
+  "automerge": false,
+  "ignoreUnstable": true,
+  "dependencyDashboard": {"enabled": true},
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "enabledManagers": ["docker-compose", "github-actions", "terraform", "mise", "custom.regex"],
+  "ignorePaths": ["sites/**", "backups/**", "**/.terraform/**"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/.*\\.yml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\s+[A-Z_]+: \\S+:(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Keep every copy of each container image in the same PR",
+      "matchManagers": ["docker-compose"],
+      "groupName": "{{depName}} container images"
+    },
+    {
+      "description": "Keep the Terraform CLI pins in mise, Terraform, and CI together",
+      "matchPackageNames": ["hashicorp/terraform", "terraform"],
+      "groupName": "Terraform CLI"
+    },
+    {
+      "description": "Update the Renovate runner and config validator together",
+      "matchPackageNames": ["ghcr.io/renovatebot/renovate"],
+      "groupName": "Renovate runtime"
+    },
+    {
+      "description": "Require dashboard approval before creating major-version PRs",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Nginx stable branches have an even minor version; keep the Alpine variant",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["nginx"],
+      "allowedVersions": "/^\\d+\\.(?:\\d*[02468])\\.\\d+-alpine$/"
+    },
+    {
+      "description": "Database upgrades remain manual, including patch updates",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["mariadb"],
+      "enabled": false
+    }
+  ]
+}

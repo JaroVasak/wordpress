@@ -16,6 +16,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  automation:
+    name: Workflow and dependency configuration checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      # renovate: datasource=docker depName=rhysd/actionlint
+      ACTIONLINT_IMAGE: rhysd/actionlint:1.7.12
+      # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
+      RENOVATE_VALIDATOR_IMAGE: ghcr.io/renovatebot/renovate:44.239.1
+
+    steps:
+      - name: Check out repository
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Lint GitHub Actions workflows
+        run: >-
+          docker run --rm --network none
+          --volume "$PWD:/repo:ro" --workdir /repo
+          "$ACTIONLINT_IMAGE" -color
+
+      - name: Validate Renovate configuration
+        run: >-
+          docker run --rm --network none
+          --volume "$PWD:/repo:ro" --workdir /repo
+          "$RENOVATE_VALIDATOR_IMAGE"
+          renovate-config-validator --strict renovate.json
+
   repository:
     name: Repository checks
     runs-on: ubuntu-24.04

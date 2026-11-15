@@ -1,0 +1,147 @@
+---
+name: Security
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '45 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository:
+    name: Repository security scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Scan dependencies, Terraform, and secrets
+        # aquasecurity/trivy-action v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: v0.76.2
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: 'false'
+          exit-code: '1'
+          format: table
+          output: trivy-repository.txt
+          skip-dirs: .git,infra/.terraform,shared/mariadb,backups
+
+      - name: Save security report
+        if: ${{ !cancelled() }}
+        # actions/upload-artifact v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: security-repository
+          path: trivy-repository.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+  result:
+    name: Security checks
+    if: ${{ always() }}
+    needs: [repository, images, containers]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Require every security job to succeed
+        env:
+          REPOSITORY_RESULT: ${{ needs.repository.result }}
+          DISCOVERY_RESULT: ${{ needs.images.result }}
+          CONTAINERS_RESULT: ${{ needs.containers.result }}
+        run: |
+          if [ "$REPOSITORY_RESULT" != success ] ||
+             [ "$DISCOVERY_RESULT" != success ] ||
+             [ "$CONTAINERS_RESULT" != success ]; then
+            echo '::error::A security scan failed or did not complete. Review the scan jobs.'
+            exit 1
+          fi
+
+  images:
+    name: Discover configured container images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.images.outputs.matrix }}
+
+    steps:
+      - name: Check out repository
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Read unique image references from Compose files
+        id: images
+        env:
+          CF_DNS_API_TOKEN: validation-placeholder
+          MYSQL_ROOT_PASSWORD: validation-placeholder
+          DB_PASSWORD: validation-placeholder
+        run: |
+          image_list="$RUNNER_TEMP/wordpress-images.txt"
+          docker compose --env-file shared/.env.example \
+            -f shared/docker-compose.yml config --images > "$image_list"
+          docker compose --env-file templates/site/.env.example \
+            -f templates/site/docker-compose.yml config --images >> "$image_list"
+          docker compose --env-file local/.env.example \
+            -f local/docker-compose.yml config --images >> "$image_list"
+          images=$(sort -u "$image_list" | \
+            jq -R -s -c 'split("\n") | map(select(length > 0))')
+          test "$(jq 'length' <<< "$images")" -gt 0
+          echo "matrix=$images" >> "$GITHUB_OUTPUT"
+
+  containers:
+    name: Container security scan (${{ matrix.image }})
+    needs: images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        image: ${{ fromJSON(needs.images.outputs.matrix) }}
+
+    steps:
+      - name: Scan container packages for known vulnerabilities
+        # aquasecurity/trivy-action v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: v0.76.2
+          scan-type: image
+          image-ref: ${{ matrix.image }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: 'false'
+          exit-code: '1'
+          timeout: 10m
+          format: table
+          output: trivy-image.txt
+
+      - name: Save container report
+        if: ${{ !cancelled() }}
+        # actions/upload-artifact v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: security-image-${{ strategy.job-index }}
+          path: trivy-image.txt
+          if-no-files-found: warn
+          retention-days: 14
