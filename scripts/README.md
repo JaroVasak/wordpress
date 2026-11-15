@@ -126,7 +126,7 @@ dump through the running MariaDB container, and keeps 14 days of matching dump
 files by default. Set `BACKUP_RETENTION_DAYS` to a different positive number if
 needed.
 
-On an Ubuntu server, install the daily 03:00 backup schedule after the site is
+On an Ubuntu server, install the daily backup schedule after the site is
 provisioned:
 
 ```bash
@@ -142,13 +142,30 @@ a different absolute backup root and retention period when needed:
 sudo ./scripts/install-backup-cron.sh example-com /mnt/backups/wordpress 30
 ```
 
+Without an explicit time, the installer preserves the site's existing schedule
+or assigns the first free daily slot, starting at 03:00 with 15-minute spacing
+in server time. It reads `/etc/cron.d/wordpress-db-backup-*` to find occupied
+times; no site-count variable or manual schedule calculation is needed. Removed
+schedules free their slots. Concurrent installers lock slot selection so they
+cannot claim the same time. If the day has no available slot, installation fails.
+
+The optional fourth argument overrides automatic selection when a specific
+time is needed:
+
+```bash
+sudo ./scripts/install-backup-cron.sh example-com /var/backups/wordpress 14 03:15
+```
+
+Spacing the start times reduces overlap; it does not prevent overlap if a dump
+runs longer than the interval.
+
 The script backs up only the database. Back up each site's `wp-content`
 separately and copy backups off the Docker host. Site `.env` files now contain
 only non-secret configuration. WordPress generates authentication keys in its
 persistent configuration when the container is initialized. Test a restore
 before relying on the backups for recovery.
 
-The 03:00 schedule uses the server timezone. Retention is based on file age,
+Backup times use the server timezone. Retention is based on file age,
 not a fixed number of copies: after a successful backup, matching files aged
 14 days or older are deleted by default. Failed backups remove the partial file
 and leave older backups intact. Installing a schedule does not run a first backup.
