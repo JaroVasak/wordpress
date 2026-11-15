@@ -47,8 +47,27 @@ binaries and custom PHP extensions must be compatible with Alpine.
 ## PHP settings
 
 [uploads.ini](uploads.ini) sets both `upload_max_filesize` and `post_max_size` to
-64 MB. Per-container CPU/memory limits and PHP worker tuning are not configured
-by this template.
+64 MB. [php-fpm.conf](php-fpm.conf) starts PHP workers on demand, allows two
+concurrent PHP requests, stops idle workers after 20 seconds, and recycles each
+worker after 500 requests. Additional requests queue until a worker is free.
+
+## Resource limits
+
+| Container | Memory cap | CPU cap | Process/thread cap |
+|---|---:|---:|---:|
+| WordPress PHP-FPM | 768 MiB | 0.75 CPU | 128 |
+| Nginx | 32 MiB | 0.25 CPU | 64 |
+
+These are ceilings, not reserved resources. The 768 MiB cap covers the entire
+PHP container, including workers, OPcache, and native allocations. PHP's own
+memory limit applies separately to each request. A container can have processes
+killed when it exceeds its memory cap; validate backups, updates, and image
+processing as well as normal page requests.
+
+Each site adds 800 MiB to the combined memory ceilings, in addition to the
+[shared-service caps](../../shared/README.md#resource-limits). These ceilings may
+overcommit the host: simultaneous peaks can exhaust physical RAM before
+individual caps are reached. Monitor usage and revisit capacity when adding sites.
 
 ## Nginx request safeguards
 

@@ -26,6 +26,9 @@ services:
     image: ghcr.io/linuxserver/socket-proxy:3.4.7-r0-ls105
     container_name: socket-proxy
     restart: unless-stopped
+    mem_limit: 64m
+    cpus: "0.25"
+    pids_limit: 64
     read_only: true
     tmpfs:
       - /run
@@ -48,6 +51,9 @@ services:
     image: traefik:v3.7.19
     container_name: traefik
     restart: unless-stopped
+    mem_limit: 192m
+    cpus: "0.5"
+    pids_limit: 128
     security_opt:
       - no-new-privileges:true
     logging: *default-logging
@@ -95,6 +101,9 @@ services:
     image: mariadb:12.2.2-noble
     container_name: mariadb
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: "1.0"
+    pids_limit: 256
     security_opt:
       - no-new-privileges:true
     logging: *default-logging

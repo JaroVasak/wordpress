@@ -10,7 +10,7 @@ Executable files under `scripts/` are operator commands:
 - `scripts/site-compose.sh` updates or recreates one existing site.
 - `scripts/backup-site.sh` creates an on-demand database dump for one site.
 - `scripts/install-backup-cron.sh` installs the daily database backup schedule.
-- `scripts/validate.sh` checks scripts, Compose files, and Nginx configurations.
+- `scripts/validate.sh` checks scripts, Compose files, Nginx, and PHP-FPM configurations.
 
 Files under `scripts/lib/` are sourced by the operator commands and are not run
 directly.
