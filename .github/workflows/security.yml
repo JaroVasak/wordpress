@@ -121,6 +121,12 @@ jobs:
         image: ${{ fromJSON(needs.images.outputs.matrix) }}
 
     steps:
+      - name: Check out reviewed security policy
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
       - name: Collect all container vulnerabilities (advisory)
         id: inventory
         # aquasecurity/trivy-action v0.36.0
@@ -137,6 +143,15 @@ jobs:
           format: json
           output: trivy-image-all.json
 
+      - name: Select exclusions for the exact reviewed helper
+        id: review
+        env:
+          IMAGE_REF: ${{ matrix.image }}
+        run: |
+          ignore_file=$(./.github/security/select-reviewed-findings.sh \
+            "$IMAGE_REF" trivy-image-all.json)
+          echo "ignore_file=$ignore_file" >> "$GITHUB_OUTPUT"
+
       - name: Check fixable HIGH and CRITICAL container vulnerabilities
         # aquasecurity/trivy-action v0.36.0
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
@@ -148,6 +163,7 @@ jobs:
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: 'true'
+          trivyignores: ${{ steps.review.outputs.ignore_file }}
           exit-code: '1'
           timeout: 10m
           format: json
@@ -180,22 +196,28 @@ jobs:
             printf '### Container vulnerabilities: `%s`\n\n' "$IMAGE_REF"
             jq -r --slurpfile fixable trivy-image-fixable.json '
               def findings: [.Results[]?.Vulnerabilities[]?];
-              findings as $all | ($fixable[0] | findings) as $fixed |
-              "| Severity | All findings | Fix available (gate) | No fix (advisory) |",
-              "|---|---:|---:|---:|",
+              findings as $all | ($fixable[0] | findings) as $blocking |
+              "| Severity | All | Fix listed | No fix | Reviewed exclusions | Blocking |",
+              "|---|---:|---:|---:|---:|---:|",
               (["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"][] as $severity |
                 ($all | map(select(.Severity == $severity)) | length) as $total |
                 (if ($severity == "HIGH" or $severity == "CRITICAL") then
-                  ($fixed | map(select(.Severity == $severity)) | length)
+                  ($blocking | map(select(.Severity == $severity)) | length)
                 else null end) as $count |
                 if $count == null then
-                  "| \($severity) | \($total) | — | Advisory only |"
+                  "| \($severity) | \($total) | — | — | — | Advisory only |"
                 else
-                  "| \($severity) | \($total) | \($count) | \($total - $count) |"
+                  ($all | map(select(.Severity == $severity and
+                    (.FixedVersion // "") != "")) | length) as $listed |
+                  if $count > $listed then error("Inconsistent fixable scan counts")
+                  else
+                    "| \($severity) | \($total) | \($listed) | \($total - $listed) | \($listed - $count) | \($count) |"
+                  end
                 end)
             ' trivy-image-all.json
             printf '\nFull and fixable reports are in the security-image artifact for this job.\n'
-            printf 'Only fixable HIGH/CRITICAL findings fail the image policy check.\n'
+            printf 'Unreviewed fixable HIGH/CRITICAL findings fail the gate.\n'
+            printf 'Reviewed exclusions apply only to the verified helper SHA-256 and listed CVEs, and expire.\n'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save container report

@@ -1,0 +1,203 @@
+{
+  "image": "mariadb:12.3.3-noble",
+  "target": "usr/local/bin/gosu",
+  "binary_sha256": "52c8749d0142edd234e9d6bd5237dff2d81e71f43537e2f4f66f75dd4b243dd0",
+  "gosu_version": "1.19",
+  "go_version": "1.24.6",
+  "reviewed_on": "2026-11-15",
+  "expires_on": "2027-02-13",
+  "tool": "govulncheck v1.9.0, unfiltered binary mode",
+  "classification": "not affected: vulnerable functions absent from reviewed binary",
+  "findings": [
+    {
+      "cve": "CVE-2025-61726",
+      "go_ids": [
+        "GO-2026-4341"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2025-61729",
+      "go_ids": [
+        "GO-2025-4155"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2025-68121",
+      "go_ids": [
+        "GO-2026-4337"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-111943",
+      "go_ids": [
+        "GO-2026-6809"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-25679",
+      "go_ids": [
+        "GO-2026-4601"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-27145",
+      "go_ids": [
+        "GO-2026-5037"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-32280",
+      "go_ids": [
+        "GO-2026-4947"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-32281",
+      "go_ids": [
+        "GO-2026-4946"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-32283",
+      "go_ids": [
+        "GO-2026-4870"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-33811",
+      "go_ids": [
+        "GO-2026-4981"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-33814",
+      "go_ids": [
+        "GO-2026-4918"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-33818",
+      "go_ids": [
+        "GO-2026-5972"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-39820",
+      "go_ids": [
+        "GO-2026-4986"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-39821",
+      "go_ids": [
+        "GO-2026-5026"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-39822",
+      "go_ids": [
+        "GO-2026-4970"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-39836",
+      "go_ids": [
+        "GO-2026-4971"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-42499",
+      "go_ids": [
+        "GO-2026-4977"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-42504",
+      "go_ids": [
+        "GO-2026-5038"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-56853",
+      "go_ids": [
+        "GO-2026-6089"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-56858",
+      "go_ids": [
+        "GO-2026-6091"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-56859",
+      "go_ids": [
+        "GO-2026-6088"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-56860",
+      "go_ids": [
+        "GO-2026-6218"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-56862",
+      "go_ids": [
+        "GO-2026-6090"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-78667",
+      "go_ids": [
+        "GO-2026-6609"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-78669",
+      "go_ids": [
+        "GO-2026-6611"
+      ],
+      "present_vulnerable_symbols": []
+    },
+    {
+      "cve": "CVE-2026-97031",
+      "go_ids": [
+        "GO-2026-6607"
+      ],
+      "present_vulnerable_symbols": []
+    }
+  ],
+  "separate_advisory": {
+    "id": "GO-2026-6686",
+    "aliases": [
+      "CVE-2026-61801"
+    ],
+    "status": "not excluded by this policy",
+    "note": "User/group-file parser symbols are present. Upstream gosu 1.20 addresses this advisory; the maintainer notes the attack requires control of image-provided user/group files. Track separately; a future Trivy finding remains blocking."
+  }
+}
