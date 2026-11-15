@@ -82,3 +82,6 @@ jobs:
 
       - name: Validate Terraform
         run: terraform -chdir=infra validate
+
+      - name: Test firewall policy without cloud credentials
+        run: terraform -chdir=infra test

@@ -3,6 +3,13 @@ data "hcloud_ssh_key" "selected" {
 }
 
 locals {
+  # Maintained from https://www.cloudflare.com/ips/; never fetched during apply.
+  cloudflare_ips = jsondecode(file("${path.module}/cloudflare-ips.json"))
+  web_allowed_cidrs = concat(
+    local.cloudflare_ips.ipv4,
+    local.cloudflare_ips.ipv6,
+  )
+
   bws_version = "2.1.0"
   bws_checksums = {
     aarch64 = "18253757286e119d450133a87eb463bf8c1ce418ce24c834f4f250d60cba6f9e"
@@ -13,31 +20,32 @@ locals {
 resource "hcloud_firewall" "wordpress" {
   name = "${var.server_name}-firewall"
 
+  lifecycle {
+    precondition {
+      condition = (
+        length(local.cloudflare_ips.ipv4) > 0 &&
+        length(local.cloudflare_ips.ipv6) > 0 &&
+        alltrue([
+          for cidr in local.web_allowed_cidrs :
+          can(cidrhost(cidr, 0)) && !can(regex("/0$", cidr))
+        ])
+      )
+      error_message = "Cloudflare IPv4 and IPv6 lists must be nonempty valid CIDRs without unrestricted ranges."
+    }
+  }
+
   rule {
     direction  = "in"
     protocol   = "tcp"
-    port       = "22"
-    source_ips = var.ssh_allowed_cidrs
+    port       = "80"
+    source_ips = local.web_allowed_cidrs
   }
 
   rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "80"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0",
-    ]
-  }
-
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "443"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0",
-    ]
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "443"
+    source_ips = local.web_allowed_cidrs
   }
 
   rule {
@@ -50,6 +58,25 @@ resource "hcloud_firewall" "wordpress" {
   }
 }
 
+resource "hcloud_firewall" "ssh" {
+  name = "${var.server_name}-ssh"
+
+  # Seed access at creation; subsequent rule changes belong to the Hetzner GUI.
+  dynamic "rule" {
+    for_each = length(var.ssh_allowed_cidrs) > 0 ? [var.ssh_allowed_cidrs] : []
+    content {
+      direction  = "in"
+      protocol   = "tcp"
+      port       = "22"
+      source_ips = rule.value
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [rule]
+  }
+}
+
 resource "hcloud_server" "wordpress" {
   name        = var.server_name
   server_type = var.server_type
@@ -58,6 +85,7 @@ resource "hcloud_server" "wordpress" {
   ssh_keys    = [data.hcloud_ssh_key.selected.id]
   firewall_ids = [
     hcloud_firewall.wordpress.id,
+    hcloud_firewall.ssh.id,
   ]
 
   backups            = var.enable_backups

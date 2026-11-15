@@ -78,6 +78,7 @@ variable "repository_ref" {
 variable "ssh_key_name" {
   description = "Name of an existing SSH key in the Hetzner Cloud project."
   type        = string
+  default     = "hetzner-wordpress"
 
   validation {
     condition     = length(trimspace(var.ssh_key_name)) > 0
@@ -86,17 +87,17 @@ variable "ssh_key_name" {
 }
 
 variable "ssh_allowed_cidrs" {
-  description = "IPv4 or IPv6 CIDR ranges allowed to connect to SSH port 22."
+  description = "Initial SSH CIDRs for a new SSH firewall only; later rule changes are managed in the Hetzner GUI."
   type        = list(string)
+  default     = []
 
   validation {
     condition = (
-      length(var.ssh_allowed_cidrs) > 0 &&
       alltrue([for cidr in var.ssh_allowed_cidrs : can(cidrhost(cidr, 0))]) &&
       !contains(var.ssh_allowed_cidrs, "0.0.0.0/0") &&
       !contains(var.ssh_allowed_cidrs, "::/0")
     )
-    error_message = "Provide at least one valid CIDR. Public SSH access from all addresses is not allowed."
+    error_message = "Use CIDRs such as 203.0.113.10/32. Public SSH access from all addresses is not allowed."
   }
 }
 
