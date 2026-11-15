@@ -1,0 +1,6 @@
+---
+# This hosted runner is in use, but actionlint 1.7.12's built-in list predates it.
+# Additional labels extend the lint allowlist; they do not select runner types.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
