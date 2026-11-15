@@ -49,39 +49,54 @@ echo " ready."
 echo ""
 
 # ── inputs ───────────────────────────────────────────────────────────────────
-if [ -z "${SITE_NAME:-}" ]; then
-  read -rp "Site name slug (e.g. example-com): " SITE_NAME
+(( $# <= 1 )) || die "Usage: $0 [domain]"
+if (( $# == 1 )); then
+  DOMAIN="$1"
 fi
+if [ -z "${DOMAIN:-}" ]; then
+  read -rp "Domain or URL (e.g. example.com or https://www.example.com): " DOMAIN
+fi
+# Extract the domain from a URL and remove the www prefix.
+DOMAIN=${DOMAIN,,}
+case "$DOMAIN" in
+  http://*) DOMAIN=${DOMAIN#http://} ;;
+  https://*) DOMAIN=${DOMAIN#https://} ;;
+esac
+DOMAIN=${DOMAIN%%[/?#]*}
+DOMAIN=${DOMAIN#www.}
+is_valid_domain "$DOMAIN" || \
+  die "Enter a valid domain or HTTP/HTTPS URL without credentials or a port."
+
+# Resource names use the normalized routing hostname.
+DEFAULT_SITE_NAME=$DOMAIN
+DEFAULT_SITE_NAME=${DEFAULT_SITE_NAME//./-}
+while [[ "$DEFAULT_SITE_NAME" == *--* ]]; do
+  DEFAULT_SITE_NAME=${DEFAULT_SITE_NAME//--/-}
+done
+SITE_NAME=${SITE_NAME:-$DEFAULT_SITE_NAME}
 is_valid_site_name "$SITE_NAME" || \
-  die "Use a lowercase slug with letters, digits, and single hyphens."
+  die "Set SITE_NAME to a lowercase slug of at most 63 characters with letters, digits, and single hyphens."
+
+DEFAULT_DB_NAME=${SITE_NAME//-/_}
+DB_NAME=${DB_NAME:-$DEFAULT_DB_NAME}
+is_valid_db_name "$DB_NAME" || \
+  die "Set DB_NAME to at most 64 letters, digits, or underscores."
+
+DB_USER=${DB_USER:-${DEFAULT_DB_NAME}_user}
+is_valid_db_user "$DB_USER" || \
+  die "Set DB_USER to at most 32 letters, digits, or underscores."
 
 SITE_SECRET_PREFIX=${SITE_NAME^^}
 SITE_SECRET_PREFIX=${SITE_SECRET_PREFIX//-/_}
 DB_PASSWORD_SECRET="${SITE_SECRET_PREFIX}_DB_PASSWORD"
+printf 'Domain: %s\nSite: %s\nDatabase: %s\nDB user: %s\nBitwarden secret: %s\n' \
+  "$DOMAIN" "$SITE_NAME" "$DB_NAME" "$DB_USER" "$DB_PASSWORD_SECRET"
 DB_PASSWORD=${!DB_PASSWORD_SECRET:-}
 [ -n "$DB_PASSWORD" ] || \
-  die "$DB_PASSWORD_SECRET is missing from the environment."
+  die "Create $DB_PASSWORD_SECRET in Bitwarden Secrets Manager, then reload your secrets shell and retry."
 is_valid_password "$DB_PASSWORD" || \
   die "$DB_PASSWORD_SECRET does not meet the documented input rules."
 export DB_PASSWORD
-
-if [ -z "${DOMAIN:-}" ]; then
-  read -rp "Domain (e.g. example.com): " DOMAIN
-fi
-is_valid_domain "$DOMAIN" || \
-  die "Enter a valid lowercase domain name."
-
-if [ -z "${DB_NAME:-}" ]; then
-  read -rp "DB name (e.g. example_com): " DB_NAME
-fi
-is_valid_db_name "$DB_NAME" || \
-  die "Use at most 64 letters, digits, or underscores for the DB name."
-
-if [ -z "${DB_USER:-}" ]; then
-  read -rp "DB user (e.g. example_com_user): " DB_USER
-fi
-is_valid_db_user "$DB_USER" || \
-  die "Use at most 32 letters, digits, or underscores for the DB user."
 
 SITES_DIR="$REPO_DIR/sites"
 mkdir -p -- "$SITES_DIR" || die "Could not create sites directory: $SITES_DIR"

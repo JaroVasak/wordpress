@@ -253,6 +253,13 @@ statements:
 
 ## 2. Adding a new site
 
+`templates/site/.env.example` documents the site's configuration fields; do not
+edit or copy it to provision a site. `new-site.sh` reads its inputs from the
+command line or exported environment variables, then generates
+`sites/<site-name>/.env`, including a random WordPress table prefix. It does not
+load a `.env` file as provisioning input. Keep database passwords in your secret
+manager, not in these files.
+
 Before provisioning a site, add its database password to your secret manager.
 Convert the site slug to uppercase, replace hyphens with underscores, and add
 the `_DB_PASSWORD` suffix. For example:
@@ -266,12 +273,26 @@ Generate a separate value for every site. Each WordPress database user is
 granted access only to its own database. It never uses the MariaDB root
 password.
 
+Pass a domain or HTTP/HTTPS URL:
+
 ```bash
-./scripts/new-site.sh
+./scripts/new-site.sh example.com
 ```
 
-If a non-secret input is not set, the script asks for it. You can also supply
-all non-secret inputs through the environment:
+`www.example.com`, `https://example.com`, and `https://www.example.com/`
+all create the same site at `example.com`. Uppercase is converted to lowercase;
+URL paths, queries, and fragments are ignored. Credentials and ports are not
+accepted. The same normalization applies to the `DOMAIN` environment variable
+and interactive input. This does not add routing or a redirect for `www`.
+
+With no argument or `DOMAIN` environment variable, the script asks for the
+hostname. It derives `SITE_NAME=example-com`, `DB_NAME=example_com`, and
+`DB_USER=example_com_user`. The matching secret is `EXAMPLE_COM_DB_PASSWORD`.
+Dots become hyphens in the slug, and repeated hyphens are
+collapsed. For long names that exceed the input limits, supply shorter resource
+names explicitly.
+
+You can still override the generated names through the environment:
 
 ```bash
 SITE_NAME=example-com \
