@@ -14,13 +14,13 @@ uses `HCLOUD_TOKEN` from the environment.
 
 ## Remote state in HCP Terraform
 
-State is stored in the `wordpress-hetzner` workspace on `app.terraform.io`,
+State is stored in the `jarovasak/wordpress-hetzner` workspace on `app.terraform.io`,
 with execution mode **Local**. Terraform runs on the workstation using local
 inputs and `HCLOUD_TOKEN`; HCP stores, versions, and locks the state.
 
-The organization is supplied at initialization with
-`-backend-config="organization=YOUR_HCP_ORGANIZATION"`. Each workstation needs
-its own Terraform CLI login. Credentials stay outside the repository.
+The organization and workspace are configured in [backend.tf](backend.tf).
+Each workstation needs its own Terraform CLI login. Credentials stay outside
+the repository.
 
 The existing state has already been uploaded. Other checkouts connect to that
 same workspace; they do not need another migration or a copy of the old local
