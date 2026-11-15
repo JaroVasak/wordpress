@@ -41,6 +41,12 @@ by this template.
 
 ## Nginx request safeguards
 
+The template and local stack use the official stable `nginx:1.30.6-alpine-slim`
+image. It omits the optional XSLT/image-filter/GeoIP module bundle, which these
+configurations do not use. The XSLT bundle in the larger Alpine variant brings
+in `libxslt`, the source of the three findings identified in the initial scan.
+Renovate preserves the stable Alpine slim variant when proposing updates.
+
 The production and local Nginx configurations:
 
 - Reject hidden files, direct `wp-config.php` access, and PHP under upload directories.
