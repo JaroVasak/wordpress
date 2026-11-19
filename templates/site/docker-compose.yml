@@ -22,7 +22,7 @@ x-logging: &default-logging
 
 services:
   nginx:
-    image: nginx:1.30.6-alpine-slim
+    image: nginx:1.30.7-alpine-slim
     container_name: ${SITE_NAME:?required}-nginx
     restart: unless-stopped
     mem_limit: 32m

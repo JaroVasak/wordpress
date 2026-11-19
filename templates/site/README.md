@@ -71,7 +71,7 @@ individual caps are reached. Monitor usage and revisit capacity when adding site
 
 ## Nginx request safeguards
 
-The template and local stack use the official stable `nginx:1.30.6-alpine-slim`
+The template and local stack use the official stable `nginx:1.30.7-alpine-slim`
 image. It omits the optional XSLT/image-filter/GeoIP module bundle, which these
 configurations do not use. The XSLT bundle in the larger Alpine variant brings
 in `libxslt`, the source of the three findings identified in the initial scan.
