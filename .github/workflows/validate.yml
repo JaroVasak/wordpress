@@ -24,7 +24,7 @@ jobs:
       # renovate: datasource=docker depName=rhysd/actionlint
       ACTIONLINT_IMAGE: rhysd/actionlint:1.7.12
       # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
-      RENOVATE_VALIDATOR_IMAGE: ghcr.io/renovatebot/renovate:44.257.1
+      RENOVATE_VALIDATOR_IMAGE: ghcr.io/renovatebot/renovate:44.257.9
 
     steps:
       - name: Check out repository
