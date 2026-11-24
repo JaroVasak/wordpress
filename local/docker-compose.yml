@@ -19,7 +19,7 @@ x-logging: &default-logging
 
 services:
   nginx:
-    image: nginx:1.30.7-alpine-slim
+    image: nginx:1.30.8-alpine-slim
     restart: unless-stopped
     mem_limit: 32m
     cpus: "0.25"
