@@ -3,7 +3,7 @@
 [CI overview](../README.md)
 
 The MariaDB image's `usr/local/bin/gosu` is a privilege-dropping startup helper.
-The full Trivy inventory remains unfiltered. The blocking scan excludes only
+The full Trivy inventory remains unfiltered. The fixable check excludes only
 listed findings after verifying that the helper has the reviewed SHA-256.
 Other images, helper binaries, paths, and CVEs receive no exemption. Expired
 entries stop being excluded. Scanner, download, and report failures still fail CI.
@@ -24,7 +24,7 @@ without executing image binaries, and compares its SHA-256 with the review.
 This also permits base-image rebuilds containing the identical helper, while a
 changed helper requires reassessment before exclusions can apply.
 
-The gate report contains remaining blocking findings. The workflow summary
+The fixable report contains the remaining findings. The workflow summary
 separates all findings, fixes listed by Trivy, unfixed findings, reviewed
 exclusions, and blocking findings. The complete report retains excluded CVEs.
 
@@ -35,8 +35,8 @@ user/group-file parser. Its affected symbols are present. It is **not** covered
 by these exclusions. Upstream gosu 1.20 addresses it; its maintainer notes that
 an attack would require control of image-provided user/group files. This is a
 separate issue to track, not evidence that the standard-library findings apply.
-If Trivy starts reporting this advisory, the gate will block pending review.
-Do not add it to the exclusion list merely to restore a green check.
+If Trivy starts reporting this advisory, it appears as a warning pending review.
+Do not add it to the exclusion list merely to silence the warning.
 
 ## Reassessing a helper
 
