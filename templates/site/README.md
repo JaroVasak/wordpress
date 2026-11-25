@@ -36,7 +36,7 @@ the container image does not replace existing core files in the volume.
 ## WordPress runtime
 
 The template and local stack use the official
-`wordpress:7.1.4-php8.5-fpm-alpine` image. It keeps the WordPress and PHP release
+`wordpress:7.1.5-php8.5-fpm-alpine` image. It keeps the WordPress and PHP release
 lines while using Alpine instead of Debian. Renovate's Docker versioning keeps
 the `php8.5-fpm-alpine` compatibility suffix when proposing WordPress updates.
 
