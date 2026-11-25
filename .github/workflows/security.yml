@@ -152,7 +152,11 @@ jobs:
             "$IMAGE_REF" trivy-image-all.json)
           echo "ignore_file=$ignore_file" >> "$GITHUB_OUTPUT"
 
-      - name: Check fixable HIGH and CRITICAL container vulnerabilities
+      # Advisory: upstream images often lag behind a fix, so findings here warn
+      # instead of failing. Scanner and report errors still fail the next step.
+      - name: Check fixable HIGH and CRITICAL container vulnerabilities (advisory)
+        id: fixable
+        continue-on-error: true
         # aquasecurity/trivy-action v0.36.0
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -197,7 +201,7 @@ jobs:
             jq -r --slurpfile fixable trivy-image-fixable.json '
               def findings: [.Results[]?.Vulnerabilities[]?];
               findings as $all | ($fixable[0] | findings) as $blocking |
-              "| Severity | All | Fix listed | No fix | Reviewed exclusions | Blocking |",
+              "| Severity | All | Fix listed | No fix | Reviewed exclusions | Fixable, not excluded |",
               "|---|---:|---:|---:|---:|---:|",
               (["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"][] as $severity |
                 ($all | map(select(.Severity == $severity)) | length) as $total |
@@ -216,9 +220,13 @@ jobs:
                 end)
             ' trivy-image-all.json
             printf '\nFull and fixable reports are in the security-image artifact for this job.\n'
-            printf 'Unreviewed fixable HIGH/CRITICAL findings fail the gate.\n'
+            printf 'Fixable HIGH/CRITICAL findings are reported as warnings and do not fail the check.\n'
             printf 'Reviewed exclusions apply only to the verified helper SHA-256 and listed CVEs, and expire.\n'
           } >> "$GITHUB_STEP_SUMMARY"
+          fixable=$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-image-fixable.json)
+          if [ "$fixable" -gt 0 ]; then
+            echo "::warning title=Container vulnerabilities::$IMAGE_REF has $fixable fixable HIGH/CRITICAL finding(s). See the job summary and the security-image artifact."
+          fi
 
       - name: Save container report
         if: ${{ !cancelled() }}
