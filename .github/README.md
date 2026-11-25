@@ -68,26 +68,27 @@ Container scanning produces two reports for each image:
 - **Full advisory report:** all severities, including vulnerabilities without a
   published fix, in `trivy-image-all.json` and `trivy-image-all.txt`. Findings
   alone do not fail this collection step.
-- **Fixable vulnerability gate:** only HIGH/CRITICAL vulnerabilities with a
-  published fix, in `trivy-image-fixable.json` and `trivy-image-fixable.txt`.
-  Unreviewed findings fail the image job and the combined `Security checks` result.
+- **Fixable vulnerability check (advisory):** only HIGH/CRITICAL
+  vulnerabilities with a published fix, in `trivy-image-fixable.json` and
+  `trivy-image-fixable.txt`. Findings raise a warning on the run and appear in
+  the summary table, but do not fail the image job: official images often lag
+  behind a fix in their base OS, which this repository cannot remediate itself.
 
 Each image job publishes a severity/count table on the workflow summary page.
-Both reports are retained in its `security-image-*` artifact for 14 days, even
-when the gate fails. The scans must refer to the same image ID. Scanner,
+Both reports are retained in its `security-image-*` artifact for 14 days, also
+when findings are reported. The scans must refer to the same image ID. Scanner,
 registry/network, report-generation, and image-ID mismatch errors still fail
 the job; these errors are not treated as clean scans. The full report retains
 lower-severity, unfixed, and reviewed non-applicable findings for review.
 
-The blocking scan supports [reviewed helper exclusions](security/README.md). They
+The fixable check supports [reviewed helper exclusions](security/README.md). They
 apply only to an explicitly listed image, verified helper SHA-256, path, CVE IDs,
-and review period. New findings and changed helpers remain subject to the full
-gate. The summary displays reviewed exclusions separately from unfixed findings.
+and review period. New findings and changed helpers are reported in full. The summary displays reviewed exclusions separately from unfixed findings.
 
 The repository scan is unchanged: HIGH/CRITICAL dependency, infrastructure, or
 secret findings fail that job. Scans inspect checked-out files and registry
-images, not the running server or installed WordPress plugins. Existing fixable
-findings may keep `Security checks` red until the affected images are remediated.
+images, not the running server or installed WordPress plugins. `Security checks`
+fails on repository findings and on scan errors; container findings only warn.
 
 Protect `main` with a branch protection rule requiring pull requests and these
 GitHub Actions checks, with branches up to date before merging:
