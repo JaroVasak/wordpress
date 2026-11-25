@@ -83,7 +83,7 @@ The production and local Nginx configurations:
 - Reject requests for PHP scripts that do not exist on disk.
 - Add common content-type, clickjacking, and referrer security headers.
 - Compress suitable text responses with a moderate gzip level.
-- Cache static assets for 30 days and omit them from access logs.
+- Cache static assets for one year and omit them from access logs. CSS and JS URLs carry a version, so a new version is fetched at once; give a replaced font or image a new file name.
 - Hide Nginx and PHP versions from HTTP responses.
 
 Traefik remains responsible for HTTP-to-HTTPS redirects, TLS, and certificate
