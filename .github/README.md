@@ -90,27 +90,41 @@ secret findings fail that job. Scans inspect checked-out files and registry
 images, not the running server or installed WordPress plugins. `Security checks`
 fails on repository findings and on scan errors; container findings only warn.
 
-Protect `main` with a branch protection rule requiring pull requests and these
-GitHub Actions checks, with branches up to date before merging:
+## Repository settings
 
-- `Repository checks`
-- `Workflow and dependency configuration checks`
+These are set in the GitHub settings, not in files. Keep this section in sync
+when changing them.
 
-Apply the rule to administrators too, disallow force pushes and branch deletion,
-and enable **Settings → General → Pull Requests → Allow auto-merge**. Do not
-require an approving review count: that would block unattended CI-tool merges,
-especially when Renovate uses the owner's PAT. Major/application updates are
-manual because Renovate does not enable automerge for them; the policy does not
-enforce a separate reviewer for those PRs.
+**Branch protection for `main`** (Settings → Branches), applied to
+administrators too:
 
-The combined `Security checks` status is not required yet. After the reviewed
-policy is merged and the workflow passes on `main`, add `Security checks` to
-the existing required checks in Settings → Branches → the protection rule for
-`main`. Keep both existing validation checks required, branches up to date, and
-select GitHub Actions as the expected check source. The combined job reports
-failure when any scan fails or is skipped.
-GitHub's native auto-merge waits for the required validation checks; non-required
-security findings do not block eligible CI-tool merges.
+- Pull requests required, with no approving review count: a required review
+  would block unattended CI-tool merges, especially when Renovate uses the
+  owner's PAT. Major/application updates are manual because Renovate does not
+  enable automerge for them; the policy does not enforce a separate reviewer
+  for those PRs.
+- Required GitHub Actions checks, with branches up to date before merging:
+  - `Repository checks`
+  - `Workflow and dependency configuration checks`
+  - `Security checks`
+- Linear history required; force pushes and branch deletion disallowed.
+
+Branches are not updated automatically. Renovate rebases its own branches when
+`main` moves; for other PRs, use **Update branch** and wait for the checks.
+`Security checks` fails on repository findings and scan errors, so those also
+stop eligible CI-tool PRs from auto-merging; container findings only warn.
+
+**Pull requests** (Settings → General): rebase and squash merging allowed,
+merge commits disabled (Renovate merges with rebase); squash commits use the
+PR title and description; **Allow auto-merge**, **Always suggest updating pull
+request branches**, and **Automatically delete head branches** are enabled.
+
+**Security** (Settings → Advanced Security): Dependabot alerts, secret
+scanning, and push protection are enabled. Dependabot security and version
+update PRs stay disabled; Renovate opens update PRs and reads the alerts.
+
+**Actions** (Settings → Actions → General): the default `GITHUB_TOKEN` is
+read-only and cannot create or approve pull requests.
 
 [actionlint.yaml](actionlint.yaml) declares the hosted `ubuntu-26.04` label for
 actionlint versions whose built-in runner list predates it. This extends label
