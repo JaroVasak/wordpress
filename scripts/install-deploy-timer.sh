@@ -37,7 +37,7 @@ trap 'rm -rf -- "$TEMP_DIR"' EXIT
 
 cat > "$TEMP_DIR/service" <<EOF
 [Unit]
-Description=Update WordPress sites from the repository, one site per run
+Description=Update WordPress sites from the repository (canary first, others a day later)
 Documentation=file://$REPO_DIR/scripts/README.md
 Wants=network-online.target docker.service
 After=network-online.target docker.service
