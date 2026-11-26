@@ -17,6 +17,8 @@ SOAK_HOURS=${DEPLOY_SOAK_HOURS:-20}
 LOCK_FILE=/run/lock/wordpress-deploy.lock
 HEALTH_ATTEMPTS=6
 HEALTH_INTERVAL=10
+# Traefik answers 404 for a site until it has registered the recreated container.
+ROUTE_SETTLE_SECONDS=10
 WAIT_TIMEOUT=180
 
 # Files owned by the template in every site directory. Everything else in a site
@@ -178,7 +180,8 @@ check_site_health() {
     # Ask Traefik on this host directly, bypassing Cloudflare and its cache.
     code=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 20 \
       --resolve "$domain:443:127.0.0.1" "https://$domain/") || true
-    if [[ "$code" =~ ^[1-4][0-9][0-9]$ ]]; then
+    # Only 2xx and 3xx count: a 404 can be Traefik with no route to the site.
+    if [[ "$code" =~ ^[23][0-9][0-9]$ ]]; then
       echo "  $domain: HTTP $code"
       return 0
     fi
@@ -248,7 +251,9 @@ site_compose() {
 }
 
 recreate_site() {
-  site_compose "$1" up -d --force-recreate --wait --wait-timeout "$WAIT_TIMEOUT"
+  site_compose "$1" up -d --force-recreate --wait --wait-timeout "$WAIT_TIMEOUT" || return 1
+  echo "Waiting ${ROUTE_SETTLE_SECONDS}s for Traefik to route to the new containers..."
+  sleep "$ROUTE_SETTLE_SECONDS"
 }
 
 copy_managed_files() {

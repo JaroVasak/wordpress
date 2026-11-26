@@ -207,15 +207,17 @@ Each run:
    - The first listed site is the **canary** and gets the current template.
    - The other sites get the canary's version once it has run healthy for
      20 hours, so they follow one day later. At most two versions run at once.
-   - Nothing changes if any listed site is unhealthy.
+   - Nothing changes if any listed site's home page does not answer with a
+     2xx or 3xx status.
 
 Merges that change only docs, scripts, CI, or `infra/` restart no site.
 
 Updating a site validates the new files (Compose, `nginx -t`, `php-fpm -t`,
 including overrides), dumps the database to `/var/backups/wordpress`, recreates
 the containers (15–30 s of downtime), and requests `https://<domain>/` through
-Traefik. A 5xx or no response restores the previous files and blocks that
-version on all sites. If the rollback fails too, the status is
+Traefik after a 10-second wait for its routing to catch up. Any status other
+than 2xx or 3xx within about a minute restores the previous files and blocks
+that version on all sites. If the rollback fails too, the status is
 `rollback-failed`.
 
 The database password is read from the site's running PHP-FPM container
