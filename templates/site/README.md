@@ -57,24 +57,18 @@ worker after 500 requests. Additional requests queue until a worker is free.
 
 ## Per-site overrides
 
-The template owns `docker-compose.yml`, `nginx.conf`, `php-fpm.conf`, and
-`uploads.ini` in every site directory; automatic updates replace them. Put
-anything specific to one site in these files instead, which updates never
-change:
+Automatic updates replace `docker-compose.yml`, `nginx.conf`, `php-fpm.conf`,
+and `uploads.ini`. Keep site-specific settings in files they never touch:
 
 | File in `sites/<site-name>/` | Effect |
 |---|---|
-| `nginx.d/*.conf` | Included inside the site's Nginx `server` block, before its `location` blocks |
-| `php.d/*.ini` | PHP settings loaded after the template's `uploads.ini`; later values win |
-| `compose.override.yml` | Compose override for anything else, such as an extra mount or a different limit |
+| `nginx.d/*.conf` | Included in the Nginx `server` block, before the `location` blocks |
+| `php.d/*.ini` | Loaded after `uploads.ini`; later values win |
+| `compose.override.yml` | Anything else, such as an extra mount, limit, or PHP-FPM pool file |
 
-`nginx.d/` can add directives and `location` blocks, but cannot repeat a
-directive that the template already sets at the same level, such as
-`client_max_body_size`; `nginx -t` rejects the duplicate. To change one,
-replace the whole file through `compose.override.yml`; that site then no longer
-receives Nginx template changes. PHP-FPM pool settings also go through
-`compose.override.yml`: mount an extra pool file that sorts after
-`zz-site.conf`, so its values win:
+`nginx.d/` cannot repeat a directive the template already sets at the same
+level (`nginx -t` fails). To override PHP-FPM pool settings, mount a file that
+sorts after `zz-site.conf`:
 
 ```yaml
 services:
@@ -83,13 +77,8 @@ services:
       - ./pool-override.conf:/usr/local/etc/php-fpm.d/zzz-override.conf:ro
 ```
 
-`scripts/site-compose.sh` and automatic updates include `compose.override.yml`
-when it exists. Changing only an override file is not detected automatically;
-apply it with `./scripts/deploy.sh site <site-name> --force`.
-
-The whole `sites/` directory is gitignored, so site names, overrides, and
-content stay off the public repository. Include `sites/*/` (overrides and
-`wp-content/`) in the off-server backups.
+Apply an override change with `./scripts/deploy.sh site <site-name> --force`.
+`sites/` is gitignored; include `sites/*/` in off-server backups.
 
 ## Resource limits
 
