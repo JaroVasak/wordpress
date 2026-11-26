@@ -293,8 +293,9 @@ watch most closely. The order of the other sites only matters after a failure.
 
 ```text
 # First line is the canary.
-jvasak-com
 example-com
+example-org
+example-net
 ```
 
 Before you list an existing site, compare it with the template:
