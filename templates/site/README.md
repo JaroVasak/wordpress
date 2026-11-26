@@ -47,7 +47,9 @@ binaries and custom PHP extensions must be compatible with Alpine.
 ## PHP settings
 
 [uploads.ini](uploads.ini) sets both `upload_max_filesize` and `post_max_size` to
-64 MB. [php-fpm.conf](php-fpm.conf) starts PHP workers on demand, allows two
+64 MB, raises `max_execution_time` to 60 seconds, and sizes OPcache at 192 MB
+with a 16 MB interned strings buffer (the image defaults filled up on a site with
+a typical plugin set). [php-fpm.conf](php-fpm.conf) starts PHP workers on demand, allows two
 concurrent PHP requests, stops idle workers after 20 seconds, and recycles each
 worker after 500 requests. Additional requests queue until a worker is free.
 
@@ -71,7 +73,7 @@ individual caps are reached. Monitor usage and revisit capacity when adding site
 
 ## Nginx request safeguards
 
-The template and local stack use the official stable `nginx:1.30.7-alpine-slim`
+The template and local stack use the official stable `nginx:1.30.8-alpine-slim`
 image. It omits the optional XSLT/image-filter/GeoIP module bundle, which these
 configurations do not use. The XSLT bundle in the larger Alpine variant brings
 in `libxslt`, the source of the three findings identified in the initial scan.
@@ -80,11 +82,24 @@ Renovate preserves the stable Alpine slim variant when proposing updates.
 The production and local Nginx configurations:
 
 - Reject hidden files, direct `wp-config.php` access, and PHP under upload directories.
+  `/.well-known/` is the one exception: it is passed to WordPress, which serves
+  OAuth discovery documents (for example `/.well-known/oauth-protected-resource`)
+  there. Hidden files below it stay blocked.
 - Reject requests for PHP scripts that do not exist on disk.
 - Add common content-type, clickjacking, and referrer security headers.
 - Compress suitable text responses with a moderate gzip level.
 - Cache static assets for one year and omit them from access logs. CSS and JS URLs carry a version, so a new version is fetched at once; give a replaced font or image a new file name.
 - Hide Nginx and PHP versions from HTTP responses.
+
+The production configuration also restores the visitor IP from Cloudflare's
+`CF-Connecting-IP` header, so access logs, WordPress, and plugins see the real
+client address instead of Traefik's container address. The header is trusted only
+from peers in `172.16.0.0/12`. The site Nginx publishes no port, so its peers are
+Docker containers (Traefik on the `proxy` network), and the web firewall admits
+only Cloudflare to Traefik. Any container on the `proxy` network could set the
+header, so attach only Traefik and site Nginx services to it. The local stack has
+no Cloudflare in front and omits this setting; otherwise the two configurations
+match.
 
 Traefik remains responsible for HTTP-to-HTTPS redirects, TLS, and certificate
 management. FastCGI page caching is intentionally not enabled by the generic
