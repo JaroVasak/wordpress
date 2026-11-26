@@ -32,5 +32,10 @@ is_valid_password "$DB_PASSWORD" || \
   die "$DB_PASSWORD_SECRET does not meet the documented input rules."
 export DB_PASSWORD
 
-exec docker compose --project-name "$SITE_NAME" \
-  -f "$SITE_DIR/docker-compose.yml" "$@"
+COMPOSE_FILES=(-f "$SITE_DIR/docker-compose.yml")
+# An explicit -f disables Compose's automatic override lookup, so add it here.
+if [ -f "$SITE_DIR/compose.override.yml" ]; then
+  COMPOSE_FILES+=(-f "$SITE_DIR/compose.override.yml")
+fi
+
+exec docker compose --project-name "$SITE_NAME" "${COMPOSE_FILES[@]}" "$@"

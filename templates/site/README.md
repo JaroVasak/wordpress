@@ -3,7 +3,9 @@
 [Project overview](../../README.md) · [Site operator commands](../../scripts/README.md#adding-a-new-site)
 
 This directory is copied to `sites/<site-name>/` when a site is provisioned.
-Editing the template affects future sites; existing sites keep their own copies.
+For sites in `sites/rollout.list`, template changes are applied automatically,
+to a canary site first and to the others a day later; see [automatic site updates](../../scripts/README.md#automatic-site-updates).
+Unlisted sites keep their copies until updated by hand.
 
 ## Generated configuration
 
@@ -52,6 +54,42 @@ with a 16 MB interned strings buffer (the image defaults filled up on a site wit
 a typical plugin set). [php-fpm.conf](php-fpm.conf) starts PHP workers on demand, allows two
 concurrent PHP requests, stops idle workers after 20 seconds, and recycles each
 worker after 500 requests. Additional requests queue until a worker is free.
+
+## Per-site overrides
+
+The template owns `docker-compose.yml`, `nginx.conf`, `php-fpm.conf`, and
+`uploads.ini` in every site directory; automatic updates replace them. Put
+anything specific to one site in these files instead, which updates never
+change:
+
+| File in `sites/<site-name>/` | Effect |
+|---|---|
+| `nginx.d/*.conf` | Included inside the site's Nginx `server` block, before its `location` blocks |
+| `php.d/*.ini` | PHP settings loaded after the template's `uploads.ini`; later values win |
+| `compose.override.yml` | Compose override for anything else, such as an extra mount or a different limit |
+
+`nginx.d/` can add directives and `location` blocks, but cannot repeat a
+directive that the template already sets at the same level, such as
+`client_max_body_size`; `nginx -t` rejects the duplicate. To change one,
+replace the whole file through `compose.override.yml`; that site then no longer
+receives Nginx template changes. PHP-FPM pool settings also go through
+`compose.override.yml`: mount an extra pool file that sorts after
+`zz-site.conf`, so its values win:
+
+```yaml
+services:
+  wordpress:
+    volumes:
+      - ./pool-override.conf:/usr/local/etc/php-fpm.d/zzz-override.conf:ro
+```
+
+`scripts/site-compose.sh` and automatic updates include `compose.override.yml`
+when it exists. Changing only an override file is not detected automatically;
+apply it with `./scripts/deploy.sh site <site-name> --force`.
+
+The whole `sites/` directory is gitignored, so site names, overrides, and
+content stay off the public repository. Include `sites/*/` (overrides and
+`wp-content/`) in the off-server backups.
 
 ## Resource limits
 

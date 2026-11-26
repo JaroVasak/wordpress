@@ -8,6 +8,8 @@ Executable files under `scripts/` are operator commands:
 - `scripts/bootstrap.sh` initializes the shared infrastructure once per server.
 - `scripts/new-site.sh` provisions one additional site and can be run repeatedly.
 - `scripts/site-compose.sh` updates or recreates one existing site.
+- `scripts/deploy.sh` applies repository changes to sites: a canary site first, the rest a day later.
+- `scripts/install-deploy-timer.sh` installs the daily automatic update timer.
 - `scripts/backup-site.sh` creates an on-demand database dump for one site.
 - `scripts/install-backup-cron.sh` installs the daily database backup schedule.
 - `scripts/validate.sh` checks scripts, Compose files, Nginx, and PHP-FPM configurations.
@@ -177,22 +179,156 @@ restart from silently moving to a newer application release. Review release
 notes, update the tag in every production and local Compose file that uses the
 image, and test the local stack before a production update.
 
-After injecting the site's database password, recreate an existing site after
-an image or configuration change:
-
-```bash
-./scripts/site-compose.sh example-com up -d --wait
-```
-
-Existing sites keep their own copies of the template. Update their image tags
-separately before recreating the containers. Existing WordPress core files are
-persistent and must be updated through WordPress itself. MariaDB is pinned to
+Sites listed for [automatic updates](#automatic-site-updates) receive image and
+configuration changes from the template, the canary site first and the others
+a day later. To apply a change to
+one site now, run `./scripts/deploy.sh site example-com`. Existing WordPress
+core files are persistent and must be updated through WordPress itself.
+MariaDB is pinned to
 `12.3.3-noble` LTS; version changes require a separate database upgrade plan.
 
 Version tags can still be changed in a container registry. Pin image digests as
 well if deployments need immutable image content.
 
 For shared-service maintenance, see [shared services](../shared/README.md#shared-service-updates).
+
+## Automatic site updates
+
+The server applies merged changes to sites by itself: first to one canary site,
+then a day later to all other sites, with automatic rollback. The repository template is the source of truth for each
+site's configuration; per-site differences live in
+[override files](../templates/site/README.md#per-site-overrides) that the
+update never touches.
+
+### What runs
+
+A systemd timer runs `deploy.sh fetch` and then `deploy.sh rollout` daily at
+06:00 Europe/Prague. Install or change the schedule as root:
+
+```bash
+sudo ./scripts/install-deploy-timer.sh            # daily at 06:00 Europe/Prague
+sudo ./scripts/install-deploy-timer.sh 05:30 UTC  # another time or timezone
+```
+
+`fetch` fast-forwards the server checkout to `origin/main`. It refuses to run
+when the checkout is on another branch, has diverged, or has local changes to
+tracked files. It needs no credentials: the repository is public.
+
+`rollout` compares each site's managed files (`docker-compose.yml`,
+`nginx.conf`, `php-fpm.conf`, `uploads.ini`) with the template:
+
+- Sites whose files already match are recorded as up to date without a restart.
+- Before changing anything, every listed site must answer over HTTPS with a
+  status below 500. One unhealthy site stops the rollout.
+- The first site in `sites/rollout.list` is the **canary**; the others are
+  **followers**. Each run first moves the followers to the version the canary
+  runs, then moves the canary to the current template.
+- Followers take the canary's version only after it has run there healthy for
+  at least 20 hours (`DEPLOY_SOAK_HOURS`), so with a daily timer every change
+  reaches the followers the day after the canary. They never get a version the
+  canary has not run, and never one the canary only has because of hand edits.
+
+With a template change merged every day:
+
+| Run | Canary | Followers |
+|---|---|---|
+| Day 1 | A | previous version |
+| Day 2 | B | A |
+| Day 3 | C | B |
+
+At most two versions run at the same time: the canary's and the followers'.
+A follower that fails stops the followers listed after it, so they can stay on
+an older version until the failure is fixed.
+
+Only changes to the managed files start an update. Merges that change docs,
+scripts, CI, or `infra/` are fetched but restart no site.
+
+Updating one site:
+
+1. Validate the new Compose file, then test the new Nginx and PHP-FPM files,
+   with the site's overrides, in the pinned images. Pull the images.
+2. Dump the site database with `backup-site.sh` to `/var/backups/wordpress`.
+3. Keep the current files in `/var/lib/wordpress-deploy/previous/<site>/`,
+   copy the new files (from the template for the canary, from the canary for
+   followers) into the site, and recreate both containers.
+   The site is unavailable for about 15–30 seconds.
+4. Request `https://<domain>/` through Traefik on the server, bypassing
+   Cloudflare. Any HTTP status below 500 within one minute counts as healthy.
+5. On failure, restore the previous files, recreate the containers, and block
+   that version. A failed step 1 changes nothing and needs no rollback. The
+   rollout stops; a blocked version is not tried again on any site. A version
+   that fails on the canary therefore never reaches the followers; the next
+   merged template change starts a new version. If the rollback also fails, the
+   status is `rollback-failed` and the site needs manual repair.
+
+When a follower rejects a version that works on the canary, it is usually that
+site's overrides, for example an `nginx.d/` file repeating a directive the new
+template adds. Fix the override, then run `deploy.sh unblock`; the next run
+retries the follower.
+
+### Database password
+
+Recreating the PHP-FPM container needs the site database password. The update
+reads it from the site's own running PHP-FPM container
+(`/run/secrets/wordpress_db_password`), where Compose placed it when the
+container was created. If the per-site variable, such as
+`EXAMPLE_COM_DB_PASSWORD`, is already in the environment, that value is used
+instead. The password stays in memory: it is not printed, logged, written to a
+file, or passed as a command-line argument. No credential that can fetch
+secrets is stored on the server.
+
+If the container is not running, the password cannot be read and the site is
+marked `manual`. Run `./scripts/deploy.sh site <site>` in
+`scripts/bws-shell.sh`.
+
+Shared services, new sites, and password rotation stay manual. When `shared/`
+changes, `fetch` prints a notice; apply it with `scripts/bootstrap.sh`.
+
+### Selecting sites
+
+Only sites listed in `sites/rollout.list` are updated automatically. The file is
+on the server only, like the rest of `sites/`. List one site per line. Lines
+starting with `#` are ignored. The first site is the canary: choose the one you
+watch most closely. The order of the other sites only matters after a failure.
+
+```text
+# First line is the canary.
+jvasak-com
+example-com
+```
+
+Before you list an existing site, compare it with the template:
+
+```bash
+./scripts/deploy.sh diff example-com
+```
+
+Lines marked `-` are in the site but not in the template: older template
+lines or hand edits. The first update removes them. Move each hand edit into the
+site's
+[override files](../templates/site/README.md#per-site-overrides), then run
+`diff` again. The site is ready when only template lines (`+`) remain.
+
+### Operator commands
+
+```bash
+./scripts/deploy.sh status                # versions, schedule, and each site's result
+./scripts/deploy.sh diff [site]           # dry run: differences from the template
+./scripts/deploy.sh site <site> [--force] # update one site to the template now
+./scripts/deploy.sh pause                 # stop automatic fetch and rollout
+./scripts/deploy.sh resume
+./scripts/deploy.sh unblock               # retry versions that failed
+journalctl -u wordpress-deploy            # output of the automatic runs
+```
+
+`site` ignores pause, blocks, and the canary order; it can therefore add a
+third running version. It recreates the site only when its files differ from
+the template, unless `--force` is given. Rollout state is kept in
+`/var/lib/wordpress-deploy/`.
+
+A failed update exits with an error, so `systemctl --failed` lists the unit.
+A rollback leaves the site running, so an uptime monitor does not report it;
+check `deploy.sh status` after merging changes.
 
 ## Repository validation
 

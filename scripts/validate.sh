@@ -20,6 +20,8 @@ SHELL_SCRIPTS=(
   "$REPO_DIR/scripts/backup-site.sh"
   "$REPO_DIR/scripts/install-backup-cron.sh"
   "$REPO_DIR/scripts/site-compose.sh"
+  "$REPO_DIR/scripts/deploy.sh"
+  "$REPO_DIR/scripts/install-deploy-timer.sh"
   "$REPO_DIR/scripts/validate.sh"
   "$REPO_DIR/scripts/lib/validation.sh"
   "$REPO_DIR/.github/security/select-reviewed-findings.sh"

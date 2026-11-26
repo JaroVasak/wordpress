@@ -4,7 +4,8 @@ backups/
 local/.env
 shared/traefik/acme.json
 shared/mariadb/
-sites/*/wp-content/
+# Per-site configuration, overrides, and content stay on the server only.
+sites/
 
 # Terraform runtime data and local values
 **/.terraform/*
