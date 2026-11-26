@@ -202,7 +202,7 @@ trap rollback_provisioning EXIT
 SITE_DIR_CREATED=true
 mkdir -- "$SITE_DIR"
 cp -a -- "$TEMPLATE_DIR/." "$SITE_DIR/"
-mkdir -p "$SITE_DIR/wp-content"
+mkdir -p "$SITE_DIR/wp-content" "$SITE_DIR/nginx.d" "$SITE_DIR/php.d"
 
 # ── write site .env ───────────────────────────────────────────────────────────
 cat > "$SITE_DIR/.env" <<EOF
@@ -240,3 +240,5 @@ echo ""
 echo "Done. $DOMAIN should be live once Traefik issues the certificate (up to 1 min)."
 echo "Schedule daily database backups with:"
 echo "  sudo '$REPO_DIR/scripts/install-backup-cron.sh' '$SITE_NAME'"
+echo "Include the site in automatic updates by adding it to:"
+echo "  $SITES_DIR/rollout.list"

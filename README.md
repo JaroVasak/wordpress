@@ -43,7 +43,9 @@ Examples run from the repository root, `/opt/wordpress` on the server.
    load it into the environment, then run `./scripts/new-site.sh example.com`.
 4. Complete the WordPress installer and [enable database backups](scripts/README.md#database-backups):
    `sudo ./scripts/install-backup-cron.sh example-com`.
-5. [Test changes locally](local/README.md) and [enable repository automation](.github/README.md).
+5. [Enable automatic site updates](scripts/README.md#automatic-site-updates):
+   `sudo ./scripts/install-deploy-timer.sh`, then list the site in `sites/rollout.list`.
+6. [Test changes locally](local/README.md) and [enable repository automation](.github/README.md).
 
 Database backups exclude `wp-content`; back up those files separately and copy
 backups off the server.
