@@ -105,6 +105,8 @@ non-draft pull requests, except Renovate's and forks'. It checks the change
 against [CLAUDE.md](../CLAUDE.md) and posts advisory comments; it is not a
 required check. It uses the owner's Claude subscription
 (`CLAUDE_CODE_OAUTH_TOKEN` secret) and can only read the PR and comment.
+Earlier review threads and comments from the bot and collaborators are passed
+in, so findings already resolved or answered are not raised again.
 
 ## Repository settings
 

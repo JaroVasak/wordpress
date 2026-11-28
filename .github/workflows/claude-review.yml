@@ -35,6 +35,55 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Collect earlier review discussion
+        id: history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Only the bot and people with write access, so outsiders' comments
+          # cannot steer the review.
+          # shellcheck disable=SC2016 # GraphQL and jq variables, not shell
+          history=$(gh api graphql \
+            -F owner="${REPO%/*}" -F repo="${REPO#*/}" -F number="$PR_NUMBER" \
+            -f query='
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    reviewThreads(first: 100) {
+                      nodes {
+                        path line originalLine isResolved isOutdated
+                        comments(first: 50) {
+                          nodes { author { login } authorAssociation body }
+                        }
+                      }
+                    }
+                    comments(last: 50) {
+                      nodes { author { login } authorAssociation body }
+                    }
+                  }
+                }
+              }' \
+            --jq '
+              def trusted: select(.author.login == "github-actions"
+                or (.authorAssociation | IN("OWNER", "MEMBER", "COLLABORATOR")));
+              def fmt: "- \(.author.login): \(.body)";
+              .data.repository.pullRequest as $pr
+              | ([$pr.reviewThreads.nodes[]
+                  | [.comments.nodes[] | trusted | fmt] as $c
+                  | select($c | length > 0)
+                  | "### \(.path):\(.line // .originalLine // "?") (\(if .isResolved then "resolved" else "open" end)\(if .isOutdated then ", outdated" else "" end))\n" + ($c | join("\n"))]
+                 + [$pr.comments.nodes[] | trusted | fmt])
+              | join("\n\n")')
+          delimiter="EOF_$(openssl rand -hex 8)"
+          {
+            echo "text<<$delimiter"
+            echo "${history:-None.}"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Review with Claude
         # anthropics/claude-code-action v1.0.290
         uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c
@@ -63,5 +112,12 @@ jobs:
             post one short summary comment with `gh pr comment`. If there is
             nothing worth reporting, say so in one line. Do not comment on
             style that the linters already enforce, and do not praise.
+
+            Earlier review discussion on this PR is below. Do not raise a
+            finding again if it is already there, whether resolved, answered
+            by the author, or still open. Raise it again only if new commits
+            changed the code it refers to and the problem is still present.
+
+            ${{ steps.history.outputs.text }}
           claude_args: |
             --allowedTools "Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
