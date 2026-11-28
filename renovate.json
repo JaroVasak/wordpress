@@ -2,6 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":semanticCommits", "helpers:pinGitHubActionDigests"],
   "timezone": "Europe/Prague",
+  "gitAuthor": "Jaroslav Vasak <29912113+JaroVasak@users.noreply.github.com>",
   "automerge": false,
   "automergeType": "pr",
   "automergeStrategy": "rebase",
