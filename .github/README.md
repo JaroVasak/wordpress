@@ -30,8 +30,12 @@ groups the Terraform CLI pins so they can be updated together. CI helper image
 versions are tracked through annotated regex rules. All actions are pinned to
 commit hashes; Renovate maintains those pins too.
 
-Update pull requests use conventional commits. Patch, minor, and major update
-PRs are created automatically, subject to the configured rate limits; no
+Update pull requests use conventional commits authored as the owner's GitHub
+no-reply address (`gitAuthor`), so they are linked to the account instead of
+Mend's default bot address. If the optional `RENOVATE_GIT_PRIVATE_KEY`
+repository secret holds a GPG key registered on that account, commits are
+signed and shown as Verified. Patch, minor, and
+major update PRs are created automatically, subject to the configured rate limits; no
 Dependency Dashboard approval is needed. Review and merge the PR itself:
 only selected CI-tool patch/minor updates and pin maintenance can merge
 automatically after required checks pass, using rebase merging to preserve the
