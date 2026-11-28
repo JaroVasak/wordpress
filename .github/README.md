@@ -93,29 +93,11 @@ fails on repository findings and on scan errors; container findings only warn.
 
 ## Claude review
 
-[claude-review.yml](workflows/claude-review.yml) runs
-[Claude Code Action](https://github.com/anthropics/claude-code-action) on every
-non-draft pull request. It reads [CLAUDE.md](../CLAUDE.md) and the READMEs of the
-directories a change touches, then posts findings as inline comments plus one
-summary comment. The review is advisory and is not a required check. It
-authenticates with the owner's Claude subscription, so reviews count against that
-subscription's usage limits and cost nothing extra.
-
-The job skips draft PRs and Renovate branches (`renovate/*`), and the action
-skips pull requests from forks, which never receive the secret. It gets
-`contents: read` and `pull-requests: write` through the workflow's
-`GITHUB_TOKEN`, and Claude may only read the PR and post comments
-(`gh pr diff`, `gh pr view`, `gh pr comment`, inline comments). It cannot push,
-approve, or merge.
-
-Set it up once:
-
-1. Run `claude setup-token` locally while signed in to the Claude subscription.
-2. Save the printed token as the repository secret `CLAUDE_CODE_OAUTH_TOKEN`
-   (Settings → Secrets and variables → Actions). Do not store it anywhere else.
-
-To stop reviews, delete the secret or disable the workflow. To rotate the
-token, run `claude setup-token` again and replace the secret.
+[claude-review.yml](workflows/claude-review.yml) runs Claude Code Action on
+non-draft pull requests, except Renovate's and forks'. It checks the change
+against [CLAUDE.md](../CLAUDE.md) and posts advisory comments; it is not a
+required check. It uses the owner's Claude subscription
+(`CLAUDE_CODE_OAUTH_TOKEN` secret) and can only read the PR and comment.
 
 ## Repository settings
 
