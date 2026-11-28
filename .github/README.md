@@ -34,7 +34,10 @@ Update pull requests use conventional commits authored as the owner's GitHub
 no-reply address (`gitAuthor`), so they are linked to the account instead of
 Mend's default bot address. If the optional `RENOVATE_GIT_PRIVATE_KEY`
 repository secret holds a GPG key registered on that account, commits are
-signed and shown as Verified. Patch, minor, and
+signed and shown as Verified. The key's user ID email must be exactly the
+`gitAuthor` no-reply address, or GitHub still shows the commits as Unverified.
+When the secret is unset, Renovate ignores the empty value and commits
+unsigned. Patch, minor, and
 major update PRs are created automatically, subject to the configured rate limits; no
 Dependency Dashboard approval is needed. Review and merge the PR itself:
 only selected CI-tool patch/minor updates and pin maintenance can merge
