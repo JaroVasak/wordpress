@@ -15,11 +15,12 @@ concurrency:
 jobs:
   review:
     name: Review pull request
-    # Skip drafts and Renovate update PRs (opened under the owner's account
-    # from renovate/* branches). Fork PRs are skipped by the action itself.
+    # Skip drafts, forks, and Renovate update PRs (opened under the owner's
+    # account from renovate/* branches).
     if: >-
       !github.event.pull_request.draft &&
-      !startsWith(github.head_ref, 'renovate/')
+      !startsWith(github.head_ref, 'renovate/') &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
