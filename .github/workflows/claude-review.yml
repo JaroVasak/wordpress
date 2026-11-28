@@ -1,0 +1,66 @@
+---
+name: Claude review
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Review pull request
+    # Skip drafts and Renovate update PRs (opened under the owner's account
+    # from renovate/* branches). Fork PRs are skipped by the action itself.
+    if: >-
+      !github.event.pull_request.draft &&
+      !startsWith(github.head_ref, 'renovate/')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check out repository
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Review with Claude
+        # anthropics/claude-code-action v1.0.290
+        uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request as an independent reviewer. You did not
+            write this code. Read CLAUDE.md and the README of every directory
+            the diff touches, then check the change against them.
+
+            Report only real problems, most severe first:
+            - Bugs and broken operator behaviour in Bash scripts, Compose,
+              Nginx, PHP-FPM, Terraform, cloud-init, or workflows.
+            - Security: secrets in files or logs, unvalidated input reaching
+              paths, .env, or SQL, widened permissions or firewall rules.
+            - Repository conventions from CLAUDE.md, for example `local/` and
+              `templates/site/` drifting apart, new scripts missing from
+              SHELL_SCRIPTS in scripts/validate.sh, unpinned images or
+              actions, or READMEs not updated with behaviour changes.
+
+            Put each finding as an inline comment on the relevant line. Then
+            post one short summary comment with `gh pr comment`. If there is
+            nothing worth reporting, say so in one line. Do not comment on
+            style that the linters already enforce, and do not praise.
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
