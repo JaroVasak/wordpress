@@ -14,13 +14,14 @@ Local validation instructions are in the
 
 ## Automated dependency and security checks
 
-Three workflows cover validation, dependency updates, and security:
+Four workflows cover validation, dependency updates, security, and code review:
 
 | Workflow | Trigger | Result |
 |---|---|---|
 | [Validate](workflows/validate.yml) | Pull requests, pushes to `main`, manual | Shell, Compose, Nginx, Terraform, workflow syntax, and Renovate config checks |
 | [Dependency updates](workflows/dependency-updates.yml) | Daily at 06:15 UTC, manual | Renovate opens version-update pull requests |
 | [Security](workflows/security.yml) | Pull requests, pushes to `main`, daily at 05:45 UTC, manual | Trivy scans repository files and all configured application container images |
+| [Claude review](workflows/claude-review.yml) | Non-draft pull requests except Renovate's | Claude posts an advisory review as inline and summary comments |
 
 [Renovate configuration](../renovate.json) covers Docker Compose images, GitHub Actions and their supported tool
 inputs, Terraform CLI/provider versions and provider lockfiles, and mise tools.
@@ -96,6 +97,14 @@ The repository scan is unchanged: HIGH/CRITICAL dependency, infrastructure, or
 secret findings fail that job. Scans inspect checked-out files and registry
 images, not the running server or installed WordPress plugins. `Security checks`
 fails on repository findings and on scan errors; container findings only warn.
+
+## Claude review
+
+[claude-review.yml](workflows/claude-review.yml) runs Claude Code Action on
+non-draft pull requests, except Renovate's and forks'. It checks the change
+against [CLAUDE.md](../CLAUDE.md) and posts advisory comments; it is not a
+required check. It uses the owner's Claude subscription
+(`CLAUDE_CODE_OAUTH_TOKEN` secret) and can only read the PR and comment.
 
 ## Repository settings
 
